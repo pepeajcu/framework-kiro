@@ -48,6 +48,28 @@ validate::domain() {
   return 1
 }
 
+# --- Saneado ---------------------------------------------------------------
+
+# prompt::sanitize — deja un valor apto para escribirse en un archivo.
+#
+# Existe por un fallo real: al escribir una descripción, pulsar las flechas del
+# teclado inserta bytes de escape (\x1b[C) en el valor. TOML prohíbe caracteres
+# de control dentro de una cadena, así que ese pyproject.toml quedaba inválido y
+# `uv` se negaba a leerlo.
+#
+# El primer paso elimina la secuencia ANSI COMPLETA (\033[...letra). Borrar
+# solo el byte de control dejaría el resto visible como texto: '[C'.
+#
+# Se aplica a TODOS los valores, vengan de una pregunta o de una flag: una flag
+# también puede traer basura si el valor se pegó desde otro sitio.
+prompt::sanitize() {
+  printf '%s' "$1" \
+    | sed -E $'s/\033\\[[0-9;]*[a-zA-Z]//g' \
+    | tr -d '[:cntrl:]' \
+    | tr -s '[:space:]' ' ' \
+    | sed -e 's/^ *//' -e 's/ *$//'
+}
+
 # --- Transformaciones ------------------------------------------------------
 
 # "Wedding Planner GT" -> "wedding-planner-gt"
@@ -78,19 +100,19 @@ prompt::ask() {
   fi
 
   while true; do
-    if [[ -n $default ]]; then
-      printf '    %s [%s]: ' "$question" "$default" >&2
-    else
-      printf '    %s: ' "$question" >&2
-    fi
+    local prompt_text="    $question: "
+    [[ -n $default ]] && prompt_text="    $question [$default]: "
 
+    # -e activa readline: las flechas mueven el cursor en vez de insertar
+    # secuencias de escape en el valor. -p escribe el prompt a stderr, así que
+    # no contamina el stdout que captura el llamador.
     # Si stdin se cierra (pipe, Ctrl-D) se acepta el valor por defecto en vez
     # de entrar en un bucle infinito.
-    if ! IFS= read -r answer; then
+    if ! IFS= read -r -e -p "$prompt_text" answer; then
       answer=$default
       printf '\n' >&2
     fi
-    answer=${answer:-$default}
+    answer=$(prompt::sanitize "${answer:-$default}")
 
     if "$validator" "$answer"; then
       printf '%s' "$answer"

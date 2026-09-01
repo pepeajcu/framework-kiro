@@ -113,6 +113,10 @@ PY
 # Se edita POR CLAVE, no por búsqueda de texto: así no hay forma de que el
 # valor por defecto ("kiro-app") se sustituya por accidente donde aparezca
 # como parte de otra cosa.
+#
+# El resultado se VALIDA parseando el TOML antes de dar el paso por bueno.
+# Un pyproject.toml corrupto rompe uv, y el error aparece varios pasos más
+# tarde, lejos de su causa.
 replace::pyproject() {
   [[ -f pyproject.toml ]] || return 0
 
@@ -120,6 +124,7 @@ replace::pyproject() {
 import os
 import pathlib
 import re
+import tomllib
 
 path = pathlib.Path("pyproject.toml")
 text = path.read_text(encoding="utf-8")
@@ -130,7 +135,19 @@ slug = os.environ["KIRO_PROJECT_SLUG"]
 if not re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?", slug):
     raise SystemExit(f"error: '{slug}' no es un nombre de paquete válido")
 
-description = os.environ["KIRO_PROJECT_DESCRIPTION"].replace(chr(34), chr(39))
+
+def toml_escape(value: str) -> str:
+    """Prepara un texto para meterlo en una cadena básica de TOML.
+
+    Los caracteres de control se ELIMINAN, no se escapan: TOML los prohíbe
+    dentro de una cadena básica, y llegan aquí cuando alguien pulsa las
+    flechas del teclado al responder una pregunta (queda un \\x1b[C literal).
+    """
+    cleaned = "".join(ch for ch in value if ch.isprintable())
+    return cleaned.replace("\\", "\\\\").replace('"', '\\"')
+
+
+description = toml_escape(os.environ["KIRO_PROJECT_DESCRIPTION"])
 
 # Anclado a inicio de línea y limitado a la primera aparición: el bloque
 # [project] es el primero del archivo.
@@ -143,6 +160,13 @@ text, n_desc = re.subn(
 
 if not (n_name and n_desc):
     raise SystemExit("error: no se encontraron name/description en pyproject.toml")
+
+# Validar ANTES de escribir: si el resultado no parsea, el archivo original
+# se queda intacto y el error señala su causa real.
+try:
+    tomllib.loads(text)
+except tomllib.TOMLDecodeError as exc:
+    raise SystemExit(f"error: la personalización produjo un TOML inválido: {exc}") from exc
 
 path.write_text(text, encoding="utf-8")
 print("    · pyproject.toml")

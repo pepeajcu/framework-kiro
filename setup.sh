@@ -26,6 +26,28 @@ source "$SCRIPT_DIR/scripts/lib/replace.sh"
 
 readonly MARKER_FILE=".kiro-setup-done"
 
+# Se pone a true en cuanto el instalador empieza a modificar el proyecto. Si algo
+# falla después de ese punto, el usuario se queda con un proyecto a medio
+# configurar y necesita saber cómo salir de ahí.
+MUTATED=false
+
+# Se ejecuta ante cualquier salida distinta de cero, incluidas las de log::die.
+on_failure() {
+  local code=$?
+  [[ $code -eq 0 ]] && return 0
+  [[ $MUTATED != true ]] && return 0
+
+  printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
+  printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
+  printf '    rm -f .env .kiro-setup-done\n' >&2
+  printf '    git checkout -- .        %s# descarta los archivos ya personalizados%s\n' \
+    "$C_DIM" "$C_RESET" >&2
+  printf '    ./setup.sh\n\n' >&2
+  printf '  %sSi ya no tienes el historial de git, lo más rápido es borrar la\n' "$C_DIM" >&2
+  printf '  carpeta y volver a clonar.%s\n\n' "$C_RESET" >&2
+}
+trap on_failure EXIT
+
 # Archivos y carpetas que pertenecen al framework, no a los proyectos que
 # nacen de él. Se ofrecen para borrar al final del setup.
 readonly FRAMEWORK_ONLY=(
@@ -194,6 +216,38 @@ gather_answers() {
     prompt::choice "Historial de git" "fresh" "fresh" "upstream" "keep"
   )
 
+  # Saneado final. Las respuestas interactivas ya vienen limpias de
+  # prompt::ask, pero los valores que llegan por flag no han pasado por ahí y
+  # pueden traer caracteres de control si se pegaron desde otro sitio. Un solo
+  # byte de escape aquí produce un pyproject.toml que `uv` no puede leer.
+  PROJECT_NAME=$(prompt::sanitize "$PROJECT_NAME")
+  PROJECT_SLUG=$(prompt::sanitize "$PROJECT_SLUG")
+  PROJECT_DESCRIPTION=$(prompt::sanitize "$PROJECT_DESCRIPTION")
+  PROJECT_DOMAIN=$(prompt::sanitize "$PROJECT_DOMAIN")
+  AUTHOR=$(prompt::sanitize "$AUTHOR")
+
+  # Los valores que llegan por flag no pasan por los validadores de las
+  # preguntas, así que se comprueban aquí. Un valor inválido debe fallar AHORA,
+  # antes de tocar nada, y no varios pasos más tarde con un error que no señala
+  # su causa.
+  validate::slug "$PROJECT_SLUG" || log::die "el slug '$PROJECT_SLUG' no es válido" \
+    "solo minúsculas, números y guiones"
+
+  case $EMAIL_PROVIDER in
+    resend | smtp | console) ;;
+    *) log::die "proveedor de correo no válido: '$EMAIL_PROVIDER'" "usa resend, smtp o console" ;;
+  esac
+
+  case $GIT_MODE in
+    fresh | upstream | keep) ;;
+    *) log::die "modo de git no válido: '$GIT_MODE'" "usa fresh, upstream o keep" ;;
+  esac
+
+  validate::port "$DB_PORT" || log::die "puerto de PostgreSQL no válido: '$DB_PORT'" \
+    "debe ser un número entre 1024 y 65535"
+  validate::port "$APP_PORT" || log::die "puerto de la app no válido: '$APP_PORT'" \
+    "debe ser un número entre 1024 y 65535"
+
   # Valores derivados: PostgreSQL no acepta guiones en identificadores sin comillas.
   DB_NAME=$(prompt::to_snake "$PROJECT_SLUG")
   DB_USER=$DB_NAME
@@ -302,6 +356,7 @@ ENVEOF
   fi
 
   chmod 600 .env
+  MUTATED=true
   log::ok ".env creado (permisos 600)"
   log::hint "secretos generados con $(preflight::has openssl && echo 'openssl' || echo 'secrets de Python')"
 }

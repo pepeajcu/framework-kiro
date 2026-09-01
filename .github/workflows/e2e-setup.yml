@@ -79,6 +79,25 @@ jobs:
           uv run mypy app
           uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
 
+      - name: Regresión — caracteres de control en las respuestas
+        # Pulsar las flechas del teclado al responder una pregunta insertaba
+        # secuencias de escape en el valor, y eso producía un pyproject.toml
+        # inválido que uv se negaba a leer. El instalador se detenía a mitad.
+        run: |
+          rm -rf /tmp/ctrl && cp -a . /tmp/ctrl && cd /tmp/ctrl
+          rm -f .env .kiro-setup-done
+          DESC=$(printf 'Landing para leads\x1b[C\x1b[C y catalogo\x1b[1;31m web')
+          ./setup.sh --non-interactive --name "Con Escapes" --slug con-escapes \
+            --description "$DESC" --author CI --git-mode keep --no-bootstrap --no-analytics
+          python3 -c "
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+          desc = data['project']['description']
+          assert '\x1b' not in desc, 'quedó un byte de escape'
+          assert '[C' not in desc, f'quedó basura ANSI visible: {desc!r}'
+          print('OK:', desc)
+          "
+
       - name: Correr setup.sh dos veces aborta sin destruir nada
         run: |
           cd /tmp/generated
