@@ -25,15 +25,15 @@ def seed() -> None:
 
     A worked example, once you have a model and its repository::
 
-        from app.repositories.product import ProductRepository
+        from app.repositories.category import CategoryRepository
 
-        PRODUCTS = [
-            {"slug": "landing", "name": "Landing page", "price_cents": 250_000},
+        CATEGORIES = [
+            {"slug": "general", "name": "General", "sort_order": 0},
         ]
 
         with SessionFactory() as session:
-            repo = ProductRepository(session)
-            for values in PRODUCTS:
+            repo = CategoryRepository(session)
+            for values in CATEGORIES:
                 existing = repo.get_by_slug(values["slug"])
                 if existing is None:
                     repo.create(**values)

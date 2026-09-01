@@ -86,7 +86,7 @@ jobs:
         run: |
           rm -rf /tmp/ctrl && cp -a . /tmp/ctrl && cd /tmp/ctrl
           rm -f .env .kiro-setup-done
-          DESC=$(printf 'Landing para leads\x1b[C\x1b[C y catalogo\x1b[1;31m web')
+          DESC=$(printf 'Texto con\x1b[C\x1b[C escapes\x1b[1;31m dentro')
           ./setup.sh --non-interactive --name "Con Escapes" --slug con-escapes \
             --description "$DESC" --author CI --git-mode keep --no-bootstrap --no-analytics
           python3 -c "

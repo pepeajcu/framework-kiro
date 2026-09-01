@@ -72,7 +72,7 @@ prompt::sanitize() {
 
 # --- Transformaciones ------------------------------------------------------
 
-# "Wedding Planner GT" -> "wedding-planner-gt"
+# "Mi Proyecto Web" -> "mi-proyecto-web"
 # Se transliteran los acentos del español a mano en vez de depender de
 # `iconv //TRANSLIT`, cuyo comportamiento difiere entre glibc y macOS.
 prompt::slugify() {

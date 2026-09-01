@@ -32,6 +32,7 @@ readonly KIRO_REPLACE_FILES=(
   "PROJECT.md"
   "README.md"
   "AGENTS.md"
+  "LICENSE"
 )
 
 # Rutas que la sustitución no debe tocar jamás. Se verifica en tiempo de

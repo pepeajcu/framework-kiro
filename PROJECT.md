@@ -16,10 +16,11 @@ __KIRO_PROJECT_DESCRIPTION__
 
 <!-- Descripción de negocio en 3-5 frases. Quién lo usa, para qué, y qué
      problema resuelve. Evita el lenguaje de marketing: la IA necesita hechos.
-     Ejemplo: "Catálogo de proveedores de bodas en Guatemala. Las novias buscan
-     y comparan proveedores; los proveedores pagan una suscripción mensual para
-     aparecer. No hay pagos dentro de la plataforma: el contacto es por
-     WhatsApp." -->
+
+     Ejemplo: "Directorio de talleres mecánicos. Los conductores buscan por
+     zona y especialidad; los talleres pagan una cuota mensual para aparecer
+     destacados. No se cobra dentro de la plataforma: el contacto es directo
+     por teléfono." -->
 
 TODO: describir el proyecto.
 

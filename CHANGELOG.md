@@ -95,6 +95,13 @@ revisar el código: ninguno se detecta sin un proyecto de verdad encima.
 - `[SEGURO]` **La imagen de producción no incluía `scripts/`**, así que no se
   podía sembrar datos en el servidor. Ahora viaja, y `.dockerignore` excluye
   `scripts/lib/` y los `__pycache__` de cualquier profundidad, que sí se colaban.
+- `[RUPTURA]` **El LICENSE del framework viajaba a todos los proyectos**, así
+  que el sitio de un cliente nacía con el copyright del autor de Kiro. Ahora
+  `setup.sh` instala un LICENSE propio con el autor y el año del proyecto. De
+  paso, esto le da uso a `--author`, que hasta ahora se preguntaba y no se
+  usaba en ningún sitio.
+- `[SEGURO]` Ejemplos de la ayuda y de la documentación neutralizados: llevaban
+  un dominio real y nombres de proyectos concretos del autor.
 - `[SEGURO]` Aviso en `demo_ping` de que al borrarlo se pierde
   `test_htmx_fragment_is_not_a_full_document`, que vigila un invariante real:
   un endpoint HTMX devuelve un fragmento, nunca un documento completo.

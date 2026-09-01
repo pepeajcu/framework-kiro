@@ -7,7 +7,7 @@
 # los tokens del esqueleto y levanta la base de datos.
 #
 #   ./setup.sh                        # interactivo
-#   ./setup.sh --non-interactive --name "Wedding Planner"
+#   ./setup.sh --non-interactive --name "Mi Proyecto"
 #   ./setup.sh --help
 #
 set -euo pipefail
@@ -82,10 +82,10 @@ USO
     ./setup.sh [opciones]
 
 OPCIONES DE PROYECTO
-    --name TEXTO             Nombre del proyecto (ej. "Wedding Planner")
+    --name TEXTO             Nombre del proyecto (ej. "Mi Proyecto")
     --slug TEXTO             Identificador en minúsculas (por defecto: derivado del nombre)
     --description TEXTO      Descripción de una línea
-    --domain TEXTO           Dominio de producción (ej. bodas.gainweb.gt)
+    --domain TEXTO           Dominio de producción (ej. midominio.com)
     --author TEXTO           Autor, para LICENSE y metadatos
     --email-provider NOMBRE  resend | smtp | console   (por defecto: resend)
     --db-port NUMERO         Puerto del host para PostgreSQL (por defecto: primero libre desde 5432)
@@ -107,7 +107,7 @@ OPCIONES DE EJECUCIÓN
 
 EJEMPLOS
     ./setup.sh
-    ./setup.sh --non-interactive --name "Wedding Planner" --no-analytics
+    ./setup.sh --non-interactive --name "Mi Proyecto" --no-analytics
     ./setup.sh -y --name Demo --git-mode keep --no-bootstrap
 USAGE
 }
@@ -366,8 +366,15 @@ ENVEOF
 # de sustituir tokens.
 install_project_readme() {
   local template="docs/framework/project-README.md"
-  [[ -f $template ]] || return 0
-  mv -f "$template" README.md
+  [[ -f $template ]] && mv -f "$template" README.md
+
+  # El LICENSE del repositorio es el de Kiro. Un proyecto generado necesita el
+  # suyo: sin esto, el sitio de un cliente nacería con el copyright del autor
+  # del framework, que además de incorrecto es un problema legal real.
+  local license_template="docs/framework/project-LICENSE"
+  [[ -f $license_template ]] && mv -f "$license_template" LICENSE
+
+  return 0
 }
 
 substitute_tokens() {

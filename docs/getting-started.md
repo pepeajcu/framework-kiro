@@ -30,9 +30,9 @@ PostgreSQL, aplica las migraciones y compila el CSS.
 
 ```bash
 ./setup.sh --non-interactive \
-  --name "Bodas GT" \
-  --description "Directorio de proveedores" \
-  --domain bodas.gainweb.gt \
+  --name "Mi Proyecto" \
+  --description "Descripción corta del proyecto" \
+  --domain midominio.com \
   --email-provider resend
 ```
 
