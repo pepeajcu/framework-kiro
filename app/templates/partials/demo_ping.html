@@ -1,0 +1,6 @@
+{# Fragmento devuelto por GET /demo/ping.
+   No extiende base.html a propósito: HTMX inserta este HTML dentro de una
+   página ya renderizada, así que un documento completo sobraría. #}
+<span class="text-foreground">
+  Respuesta del servidor: <strong>{{ server_time }}</strong>
+</span>

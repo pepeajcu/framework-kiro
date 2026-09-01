@@ -1,0 +1,13 @@
+{# Cabecera del sitio. Es un partial para poder reemplazarla por proyecto
+   sin tocar base.html. #}
+<header class="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
+  <nav class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+    <a href="/" class="text-foreground text-base font-semibold tracking-tight">
+      {{ settings.app_name }}
+    </a>
+
+    <div class="flex items-center gap-2">
+      {% block nav_items %}{% endblock %}
+    </div>
+  </nav>
+</header>

@@ -1,0 +1,102 @@
+[project]
+name = "kiro-app"
+version = "0.1.0"
+description = "Application built with the Kiro framework"
+requires-python = ">=3.12"
+
+dependencies = [
+    # --- Web ---
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.20",   # parsing de formularios SSR
+    "jinja2>=3.1",
+    # --- Datos ---
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",       # driver sync moderno para PostgreSQL
+    # --- Config y validación ---
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    # --- Utilidades ---
+    "itsdangerous>=2.2",          # cookies de sesión y tokens firmados
+    # httpx2 es la sucesora de httpx. La usan tanto nuestro código saliente
+    # (email, analítica server-side) como el TestClient de Starlette, que ya
+    # marca httpx v1 como obsoleta. Una sola librería HTTP en el proyecto.
+    "httpx2>=2.12",
+    "uuid-utils>=0.10",           # UUIDv7: claves ordenadas temporalmente
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "mypy>=1.14",
+    "ruff>=0.9",
+    "pytailwindcss>=0.2",         # Tailwind standalone: cero Node.js
+]
+
+[tool.uv]
+package = false                   # es una aplicación, no una librería instalable
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter. Sustituye a black, isort, flake8 y más.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "A",        # builtins shadowing
+    "C4",       # comprehensions
+    "DTZ",      # datetimes sin tz — fuente clásica de bugs
+    "T20",      # sin print() en producción
+    "SIM",      # simplify
+    "PTH",      # usar pathlib
+    "RUF",      # reglas propias de ruff
+    "S",        # bandit: seguridad
+]
+ignore = [
+    "S101",     # assert: permitido, pytest lo necesita
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]          # credenciales de prueba hardcodeadas
+"scripts/**" = ["T20"]                 # los scripts sí imprimen
+"app/emails/providers/console.py" = ["T20"]  # su trabajo es imprimir
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+# ---------------------------------------------------------------------------
+# Mypy — el sustituto del compilador de Go. Estricto y obligatorio.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+exclude = ["^migrations/versions/"]     # código autogenerado por Alembic
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/main.py"]

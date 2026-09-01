@@ -1,0 +1,25 @@
+# Todo lo que no debe entrar en el contexto de build: acelera el build y evita
+# que un secreto acabe dentro de una capa.
+.git
+.github
+.venv
+.env
+.env.*
+!.env.example
+.kiro-setup-done
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Artefacto de build: lo genera la etapa 'assets', no se copia desde el host.
+app/static/css/app.css
+
+# docs/, tests/ y scripts/ NO se excluyen: la etapa 'development' hace COPY . .
+# y ahí sí hacen falta (correr la suite dentro del contenedor, por ejemplo).
+# La imagen de producción copia solo app/ y migrations/ de forma explícita, así
+# que nada de esto llega a producción de todas formas.

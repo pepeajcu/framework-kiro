@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+build/
+dist/
+
+# --- Virtualenv / uv ---
+.venv/
+venv/
+
+# --- Environment ---
+.env
+.env.local
+.env.*.local
+
+# --- Kiro setup marker ---
+.kiro-setup-done
+
+# --- Tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- Build artefacts (generated, never committed) ---
+app/static/css/app.css
+app/static/css/app.css.map
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# --- Local agent state (skills & commands ARE committed) ---
+.claude/settings.local.json

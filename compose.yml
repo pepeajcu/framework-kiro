@@ -1,0 +1,62 @@
+# Entorno de desarrollo local.
+#
+# Todo se configura desde .env: este archivo no lleva ningún valor propio del
+# proyecto, así que setup.sh no necesita tocarlo.
+#
+#   make up      levantar        make logs    ver logs
+#   make down    parar           make shell   abrir psql
+
+name: ${POSTGRES_DB:-kiro}
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?falta POSTGRES_DB en .env}
+      # Acelera el arranque en desarrollo. Nunca en producción.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      # Expuesto solo a 127.0.0.1: la base de datos nunca escucha en la red.
+      # El puerto del host es configurable porque una máquina con varios
+      # proyectos ya tiene el 5432 ocupado.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # OJO: en PostgreSQL 18+ el volumen va en /var/lib/postgresql, NO en
+      # /var/lib/postgresql/data. El idiom antiguo (que es el que aparece en
+      # casi todos los tutoriales) hace que el contenedor arranque en bucle:
+      # detecta datos en un "unused mount/volume" y aborta.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      # 'app' espera a que esto pase, no a que el contenedor arranque:
+      # PostgreSQL tarda unos segundos más en aceptar conexiones.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  app:
+    build:
+      context: .
+      target: development
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # .env apunta a localhost (para migraciones y tests desde el host).
+      # Dentro de la red de compose el host es 'db'.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      # Recarga en caliente: el código viene del host, no de la imagen.
+      - ./app:/srv/app:ro
+      - ./migrations:/srv/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -1,0 +1,87 @@
+# FRAMEWORK-ONLY — setup.sh lo elimina de los proyectos generados.
+#
+# Este workflow es lo único que impide que el instalador se pudra. Sin él,
+# setup.sh se rompe en silencio y no te enteras hasta el siguiente proyecto,
+# semanas después, cuando ya no recuerdas qué cambiaste.
+name: E2E — setup.sh
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Semanal: detecta roturas causadas por cambios externos (imagen de
+    # PostgreSQL, uv, releases de Tailwind), no solo por commits propios.
+    - cron: "0 6 * * 1"
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Analizar los scripts
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -x setup.sh scripts/lib/*.sh
+
+  generate-and-check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Cada combinación produce un proyecto distinto. Todas deben funcionar.
+        include:
+          - name: "Con analítica"
+            flags: "--with-analytics --email-provider resend"
+          - name: "Sin analítica"
+            flags: "--no-analytics --email-provider console"
+          - name: "SMTP"
+            flags: "--no-analytics --email-provider smtp"
+
+    name: Generar proyecto (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Correr setup.sh sobre un clon limpio
+        # Sobre una copia, no sobre el checkout: setup.sh borra archivos del
+        # framework y reescribe git, y no debe tocar el repo original.
+        run: |
+          cp -a . /tmp/generated
+          cd /tmp/generated
+          ./setup.sh --non-interactive \
+            --name "Proyecto de Prueba" \
+            --slug proyecto-prueba \
+            --description "Generado por CI" \
+            --author "CI" \
+            --git-mode keep \
+            --no-bootstrap \
+            ${{ matrix.flags }}
+
+      - name: El proyecto generado quedó personalizado
+        run: |
+          cd /tmp/generated
+          grep -q 'name = "proyecto-prueba"' pyproject.toml
+          grep -q "Proyecto de Prueba" PROJECT.md
+          # Ningún token sin sustituir fuera de scripts/ y docs/
+          ! grep -rIl --exclude-dir=.git --exclude-dir=scripts --exclude-dir=docs \
+              -e '__KIRO_[A-Z_]*__' .
+          # Las plantillas de Basecoat siguen intactas
+          grep -rq '{%' app/templates/basecoat/
+
+      - name: El proyecto generado pasa su propia puerta de calidad
+        run: |
+          cd /tmp/generated
+          uv sync --frozen
+          uv run ruff check .
+          uv run mypy app
+          uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
+
+      - name: Correr setup.sh dos veces aborta sin destruir nada
+        run: |
+          cd /tmp/generated
+          cp .env /tmp/env-antes
+          ! ./setup.sh --non-interactive --name "Otro" --no-bootstrap --git-mode keep
+          diff -q .env /tmp/env-antes

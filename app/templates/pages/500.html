@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Error del servidor — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="py-16 text-center">
+  <p class="text-muted-foreground font-mono text-sm">500</p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight">Algo se rompió por nuestra parte</h1>
+  <p class="text-muted-foreground mx-auto mt-3 max-w-md text-pretty">
+    El error quedó registrado. Vuelve a intentarlo en un momento.
+  </p>
+  <a href="/" class="btn mt-6" data-variant="primary">Volver al inicio</a>
+</section>
+{% endblock %}

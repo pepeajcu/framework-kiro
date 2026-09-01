@@ -1,0 +1,31 @@
+/* Punto de entrada de Tailwind.
+ *
+ * Se compila con `make css` usando el CLI standalone de Tailwind, sin Node.js
+ * (ver docs/decisions/0005-sin-nodejs.md). La salida va a app.css, que está
+ * en .gitignore: es un artefacto de build, no código fuente.
+ */
+
+@import "tailwindcss";
+
+/* Tema de Basecoat. Cámbialo por otro y recompila:
+ * vega | nova | maia | lyra | mira | luma | sera | rhea */
+@import "./vendor/basecoat/basecoat-vega.css";
+
+/* Dónde buscar clases de Tailwind. Sin esto, Tailwind no ve las plantillas
+ * Jinja y elimina como "no usadas" las clases que sí se usan. */
+@source "../../templates";
+@source "../../../app/**/*.py";
+
+/* ---------------------------------------------------------------------------
+ * Personalización del proyecto
+ *
+ * Sobreescribe aquí, NUNCA editando app/static/css/vendor/: esos archivos se
+ * reemplazan al actualizar Basecoat (ver docs/vendor.md).
+ * ------------------------------------------------------------------------ */
+
+@theme {
+  /* Ejemplo — descomenta y ajusta a la identidad visual del proyecto:
+   * --color-primary: oklch(0.55 0.22 264);
+   * --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+   */
+}

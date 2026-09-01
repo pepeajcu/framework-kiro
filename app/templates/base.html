@@ -1,0 +1,68 @@
+{#
+  Plantilla raíz. Toda página del proyecto hereda de aquí.
+
+  Bloques disponibles:
+    title          título de la pestaña (obligatorio sobreescribirlo)
+    description    meta description — importante para SEO
+    head_extra     <link>/<meta> adicionales de una página concreta
+    body_class     clases del <body>
+    content        el contenido de la página
+    scripts        <script> al final del body
+
+  Regla de arquitectura: esta plantilla se renderiza SIEMPRE en el servidor.
+  Ninguna página de Kiro depende de JavaScript para mostrar su contenido.
+#}
+<!doctype html>
+<html lang="{% block html_lang %}es{% endblock %}" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{% endblock %}">
+
+  {# --- Open Graph: cómo se ve el enlace al compartirlo en WhatsApp o redes --- #}
+  {% block opengraph %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ settings.app_name }}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:url" content="{{ settings.base_url }}{{ request.url.path }}">
+  {% block og_image %}{% endblock %}
+  <meta name="twitter:card" content="summary_large_image">
+  {% endblock %}
+
+  {# La URL canónica evita que la misma página indexe dos veces por parámetros
+     de query (utm_*, etc.), que es lo normal en campañas de marketing. #}
+  <link rel="canonical" href="{{ settings.base_url }}{{ request.url.path }}">
+
+  <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+  <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+
+  {# HTMX en el <head> con defer: está disponible antes de que el usuario pueda
+     interactuar, sin bloquear el primer render. #}
+  <script src="{{ asset('js/vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ asset('js/vendor/basecoat.min.js') }}" defer></script>
+
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="bg-background text-foreground min-h-full antialiased {% block body_class %}{% endblock %}">
+
+  {% block layout %}
+    {% include "partials/header.html" %}
+
+    <main id="main" class="mx-auto w-full max-w-5xl px-4 py-10">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% include "partials/footer.html" %}
+  {% endblock %}
+
+  {# Destino de los toasts de Basecoat. Los fragmentos HTMX pueden inyectar
+     mensajes aquí con hx-swap-oob. #}
+  <div id="toaster" class="toaster"></div>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

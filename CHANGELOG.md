@@ -1,0 +1,101 @@
+# Changelog
+
+Todas las versiones notables de Kiro se documentan aquí.
+Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
+versionado según [SemVer](https://semver.org/lang/es/).
+
+> **Cómo leer este changelog si vas a actualizar un proyecto existente**
+> (ver [`docs/upgrading.md`](docs/upgrading.md)). Cada entrada lleva una etiqueta:
+>
+> - `[SEGURO]` — se puede traer con `git checkout upstream/main -- <ruta>` sin más.
+> - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
+> - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
+
+## [Unreleased] — v0.1.0 · Esqueleto
+
+Primera versión utilizable. Un proyecto generado arranca, sirve páginas
+renderizadas en servidor, habla con PostgreSQL y pasa su propia puerta de calidad.
+
+### Instalador
+
+- `[SEGURO]` `setup.sh` con preflight (docker, python, git, uv), preguntas
+  interactivas, generación de secretos con `openssl`, sustitución de tokens,
+  limpieza de archivos del framework y arranque de la base de datos.
+- `[SEGURO]` Modo `--non-interactive` con una flag por pregunta. Es lo que
+  permite que CI lo ejecute y que el instalador no se pudra en silencio.
+- `[SEGURO]` **Detección de puertos libres.** Los valores por defecto de
+  PostgreSQL y de la app son el primer puerto disponible, no el canónico: una
+  máquina con varios proyectos ya tiene el 5432 y el 8000 ocupados.
+- `[SEGURO]` Guarda de idempotencia: correr `setup.sh` dos veces aborta sin
+  regenerar `.env` ni dejar la base de datos inaccesible.
+- `[SEGURO]` Regenera `uv.lock` tras renombrar el proyecto, para que
+  `uv sync --frozen` siga funcionando en CI y en el Dockerfile.
+
+### Aplicación
+
+- `[SEGURO]` `app/config.py` — Settings tipado, único punto que lee el entorno.
+- `[SEGURO]` `app/db.py` — engine síncrono con `pool_pre_ping`, sesión por
+  petición con commit/rollback automático.
+- `[SEGURO]` `app/repositories/base.py` — `BaseRepository[ModelT]` genérico y
+  tipado, que falla al importar si una subclase olvida declarar `model`.
+- `[SEGURO]` `app/models/base.py` — convención de nombres de constraints y
+  claves UUIDv7.
+- `[SEGURO]` `app/templating.py` — Jinja2 configurado, helper `render()` y
+  `asset()` con cache-busting por mtime.
+- `[SEGURO]` `app/exceptions.py` — excepciones de dominio sin acoplar a FastAPI.
+- `[SEGURO]` Páginas 404 y 500 renderizadas con el layout del sitio.
+
+### Frontend
+
+- `[SEGURO]` Basecoat 1.0.2 y HTMX 2.0.10 vendorizados. Cero Node.js: Tailwind
+  v4 se compila con su CLI standalone vía `pytailwindcss`.
+- `[SEGURO]` `base.html` con SEO de serie: título, descripción, canonical,
+  Open Graph y Twitter Card, todo sobreescribible por bloque.
+- `[SEGURO]` Página de inicio de ejemplo con una interacción HTMX real,
+  pensada como referencia viva para la IA.
+
+### Capa de IA
+
+- `[SEGURO]` `AGENTS.md` con el stack, las capas, las reglas duras y lo
+  prohibido. `CLAUDE.md` lo importa.
+- `[SEGURO]` Plantilla `PROJECT.md` para el dominio de negocio.
+- `[SEGURO]` Skills `kiro-feature`, `kiro-component`, `kiro-migration`, `kiro-adr`.
+- `[SEGURO]` Comandos `/spec-new`, `/spec-design`, `/spec-tasks`, `/spec-build`,
+  `/kiro-check`.
+
+### Infraestructura y calidad
+
+- `[SEGURO]` Dockerfile multi-etapa: usuario sin privilegios, healthcheck, y el
+  CSS compilado en su propia etapa. Imagen de producción de ~390 MB.
+- `[SEGURO]` `compose.yml` con PostgreSQL 18 y puertos configurables.
+- `[SEGURO]` `make check` — lint, tipos, tests y detección de migraciones
+  pendientes.
+- `[SEGURO]` Tests con base de datos aislada (`<db>_test`) y rollback por test.
+  El esquema se construye con las migraciones reales, no con `create_all()`.
+- `[SEGURO]` CI: puerta de calidad + workflow e2e que genera un proyecto desde
+  cero con tres combinaciones de opciones y corre su suite.
+- `[SEGURO]` Pre-commit con ruff, mypy `--strict` y shellcheck.
+
+### Decisiones registradas
+
+ADRs 0001–0007. Tres contradicen el documento de visión original y son las que
+más importa conocer:
+
+- [0002](docs/decisions/0002-sqlalchemy-sincrono.md) — SQLAlchemy **síncrono**,
+  no async: es donde más alucina la IA en este stack.
+- [0005](docs/decisions/0005-sin-nodejs.md) — cero Node.js.
+- [0007](docs/decisions/0007-sin-alpinejs.md) — sin Alpine.js; Basecoat ya cubre
+  la interactividad con JS vanilla.
+
+### Notas sobre dependencias externas
+
+- **PostgreSQL 18** cambió el punto de montaje del volumen a
+  `/var/lib/postgresql`. El idiom antiguo (`/var/lib/postgresql/data`) hace que
+  el contenedor arranque en bucle.
+- **Basecoat 1.0** sustituyó las clases modificadoras por atributos `data-*`:
+  `<button class="btn" data-variant="primary">`, no `btn-primary`. Escribir la
+  forma antigua no da error, simplemente renderiza sin estilo.
+- **Starlette 1.6** marca `httpx` v1 como obsoleta para su `TestClient`. Kiro usa
+  `httpx2`, que sirve además para las llamadas HTTP salientes.
+
+[Unreleased]: https://github.com/pepeajcu/framework-kiro/commits/main

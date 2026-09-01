@@ -1,0 +1,56 @@
+# Comprobaciones antes de cada commit.
+#
+# Esto NO es opcional en Kiro: Python no trae compilador, así que estos hooks y
+# CI son lo único que impide que llegue a main código con tipos rotos.
+# Ver docs/decisions/0001-python-sobre-go.md.
+#
+# Instalar una vez por clon:  uv run pre-commit install
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=600]
+      # Última línea de defensa contra commitear una clave privada.
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.0
+    hooks:
+      - id: mypy
+        files: ^app/
+        args: [--strict]
+        # mypy necesita las dependencias reales para comprobar sus tipos; sin
+        # esto trataría fastapi y sqlalchemy como Any y no detectaría nada.
+        additional_dependencies:
+          - fastapi
+          - pydantic
+          - pydantic-settings
+          - sqlalchemy[mypy]
+          - types-passlib
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.11.0
+    hooks:
+      - id: shellcheck
+        args: [-x]
+
+exclude: |
+  (?x)^(
+    app/static/(css|js)/vendor/.*|
+    app/templates/basecoat/.*|
+    migrations/versions/.*
+  )$

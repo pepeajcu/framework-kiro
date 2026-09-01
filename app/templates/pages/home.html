@@ -1,0 +1,86 @@
+{#
+  Página de inicio.
+
+  Sirve de EJEMPLO VIVO para la IA y para ti: muestra el patrón completo de
+  Kiro —herencia de plantilla, componentes de Basecoat por clase CSS, y una
+  interacción HTMX que devuelve un fragmento renderizado en servidor.
+
+  Bórrala cuando el proyecto tenga su propia portada. Antes de borrarla, lee
+  cómo funciona el intercambio HTMX de abajo: es el patrón que se repite en
+  todo el proyecto.
+#}
+{% extends "base.html" %}
+
+{% block title %}{{ settings.app_name }} — construido con Kiro{% endblock %}
+{% block description %}
+  Aplicación web renderizada en servidor con FastAPI, HTMX y PostgreSQL.
+{% endblock %}
+
+{% block content %}
+<section class="space-y-3">
+  <span class="badge" data-variant="secondary">Kiro v0.1.0</span>
+
+  <h1 class="text-4xl font-semibold tracking-tight text-balance">
+    Hola, {{ settings.app_name }}
+  </h1>
+
+  <p class="text-muted-foreground max-w-2xl text-lg text-pretty">
+    El esqueleto está en pie: FastAPI sirviendo HTML renderizado en servidor,
+    PostgreSQL detrás, y componentes listos para usar. Ya puedes construir.
+  </p>
+</section>
+
+<section class="mt-10 grid gap-4 sm:grid-cols-2">
+  <article class="card">
+    <header>
+      <h2>Empieza por PROJECT.md</h2>
+      <p>Es lo que la IA lee para no inventarse tu dominio.</p>
+    </header>
+    <section>
+      <p class="text-muted-foreground text-sm">
+        Describe ahí tus entidades y tus reglas de negocio. Un
+        <code class="text-foreground">PROJECT.md</code> bien escrito vale más
+        que cualquier prompt largo, y se paga una sola vez.
+      </p>
+    </section>
+  </article>
+
+  <article class="card">
+    <header>
+      <h2>El flujo de una petición</h2>
+      <p>Siempre el mismo, sin excepciones.</p>
+    </header>
+    <section>
+      <p class="text-muted-foreground font-mono text-sm">
+        router → service → repository → modelo → plantilla → HTML
+      </p>
+    </section>
+  </article>
+</section>
+
+{# --- Demostración de HTMX -------------------------------------------------
+  El botón pide GET /demo/ping y sustituye el contenido de #demo-target por el
+  HTML que devuelve el servidor. Sin JSON, sin escribir JavaScript, sin
+  actualizar el DOM a mano.
+
+  hx-get     a dónde pedir
+  hx-target  qué elemento reemplazar
+  hx-swap    cómo reemplazarlo (innerHTML es el valor por defecto)
+--------------------------------------------------------------------------- #}
+<section class="mt-10">
+  <h2 class="text-lg font-medium">HTMX en tres atributos</h2>
+
+  <div class="mt-3 flex items-center gap-3">
+    <button class="btn" data-variant="primary"
+            hx-get="/demo/ping"
+            hx-target="#demo-target"
+            hx-swap="innerHTML">
+      Pedir la hora al servidor
+    </button>
+
+    <div id="demo-target" class="text-muted-foreground text-sm">
+      Aún no has pulsado nada.
+    </div>
+  </div>
+</section>
+{% endblock %}

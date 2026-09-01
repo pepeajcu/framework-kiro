@@ -1,0 +1,85 @@
+# Puerta de calidad del proyecto. Es el mismo `make check` que corres en local.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # Un push nuevo cancela el build anterior de la misma rama: no tiene sentido
+  # gastar minutos en un commit que ya quedó obsoleto.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kiro
+          POSTGRES_PASSWORD: kiro
+          POSTGRES_DB: kiro
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kiro"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SECRET_KEY: clave-solo-para-ci-no-tiene-que-ser-secreta-pero-si-larga
+      DATABASE_URL: postgresql+psycopg://kiro:kiro@localhost:5432/kiro
+      APP_NAME: CI
+      ENVIRONMENT: local
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Formato
+        run: uv run ruff format --check .
+
+      - name: Tipos
+        run: uv run mypy app
+
+      - name: Compilar CSS
+        # Si Tailwind falla, la app arranca pero sin estilos. Mejor que falle aquí.
+        run: uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
+
+      - name: Migraciones
+        run: uv run alembic upgrade head
+
+      - name: Sin migraciones pendientes
+        # Detecta el olvido clásico: cambiar un modelo y no generar la migración.
+        run: uv run alembic check
+
+      - name: Tests
+        run: uv run pytest --cov --cov-report=term-missing
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Construir la imagen de producción
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
