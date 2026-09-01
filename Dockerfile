@@ -81,6 +81,9 @@ COPY --from=deps --chown=app:app /opt/venv /opt/venv
 COPY --chown=app:app alembic.ini ./
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app app ./app
+# scripts/ viaja a producción para poder correr `python -m scripts.seed` como
+# comando previo al despliegue, igual que las migraciones. Son unos pocos KB.
+COPY --chown=app:app scripts ./scripts
 COPY --from=assets --chown=app:app /srv/app/static/css/app.css ./app/static/css/app.css
 
 USER app

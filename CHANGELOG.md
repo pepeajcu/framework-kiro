@@ -78,6 +78,27 @@ renderizadas en servidor, habla con PostgreSQL y pasa su propia puerta de calida
 
 ### Corregido
 
+Los cuatro salieron de construir un catálogo real sobre el framework, no de
+revisar el código: ninguno se detecta sin un proyecto de verdad encima.
+
+- `[SEGURO]` **`make seed` estaba roto.** El Makefile invocaba `scripts.seed`,
+  pero ni `scripts/seed.py` ni `scripts/__init__.py` existían — y `setup.sh`
+  borra `scripts/lib/`, así que en un proyecto generado la carpeta quedaba
+  vacía. Añadido un `seed.py` funcional y documentado, con el patrón idempotente
+  (buscar por clave natural y actualizar) explicado en su docstring.
+- `[SEGURO]` **La guía de personalización de `input.css` era incorrecta.** El
+  ejemplo sugería sobreescribir `--color-primary` dentro de `@theme`. Basecoat
+  mapea `--color-primary: var(--primary)` en su propio `@theme`, y el modo
+  oscuro cambia la variable CRUDA: sobreescribir el token rompe esa indirección
+  y el color deja de cambiar en modo oscuro. Corregido, separando qué va en
+  `:root` (colores, radios) y qué en `@theme` (tipografías).
+- `[SEGURO]` **La imagen de producción no incluía `scripts/`**, así que no se
+  podía sembrar datos en el servidor. Ahora viaja, y `.dockerignore` excluye
+  `scripts/lib/` y los `__pycache__` de cualquier profundidad, que sí se colaban.
+- `[SEGURO]` Aviso en `demo_ping` de que al borrarlo se pierde
+  `test_htmx_fragment_is_not_a_full_document`, que vigila un invariante real:
+  un endpoint HTMX devuelve un fragmento, nunca un documento completo.
+
 - `[SEGURO]` **`migrations/env.py` pisaba la URL fijada por su llamador.** La
   suite de tests apunta Alembic a la base `<db>_test`, pero `env.py` la
   sobreescribía sin comprobarlo: `alembic upgrade` migraba la base de

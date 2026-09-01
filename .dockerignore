@@ -2,13 +2,18 @@
 # que un secreto acabe dentro de una capa.
 .git
 .github
+
+# Librerías del instalador: no pintan nada en una imagen de producción.
+scripts/lib/
 .venv
 .env
 .env.*
 !.env.example
 .kiro-setup-done
 
-__pycache__/
+# Con ** para que aplique en cualquier profundidad: '__pycache__/' a secas solo
+# excluye el de la raíz, y los de app/ y scripts/ acababan en la imagen.
+**/__pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/

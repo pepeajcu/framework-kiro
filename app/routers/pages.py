@@ -29,6 +29,12 @@ def demo_ping(request: Request) -> HTMLResponse:
 
     Delete this together with the demo section of `pages/home.html` once the
     project has a real home page.
+
+    When you do, `tests/test_smoke.py::test_htmx_fragment_is_not_a_full_document`
+    goes with it — and that test guards a real invariant: an HTMX endpoint must
+    return a fragment, never a whole document. Nesting `<html>` inside a live
+    page still renders, so the mistake survives review. Re-point that test at
+    your first real fragment endpoint instead of dropping it.
     """
     return render(
         request,

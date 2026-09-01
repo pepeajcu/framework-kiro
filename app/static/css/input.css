@@ -23,9 +23,32 @@
  * reemplazan al actualizar Basecoat (ver docs/vendor.md).
  * ------------------------------------------------------------------------ */
 
-@theme {
-  /* Ejemplo — descomenta y ajusta a la identidad visual del proyecto:
-   * --color-primary: oklch(0.55 0.22 264);
-   * --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+/* COLORES Y RADIOS -> se redefinen en :root, NO dentro de @theme.
+ *
+ * Basecoat declara las variables crudas (--primary, --foreground, --radius) en
+ * :root, y su propio @theme las mapea a los tokens de Tailwind:
+ *
+ *     @theme { --color-primary: var(--primary); }
+ *
+ * El modo oscuro cambia la variable CRUDA. Si sobreescribes --color-primary
+ * rompes esa indirección y el color deja de cambiar al pasar a modo oscuro.
+ * Por eso van aquí, no en @theme. */
+:root {
+  /* Ejemplo — descomenta y ajústalo a la identidad del proyecto:
+   * --radius: 0.25rem;
+   * --primary: oklch(0.55 0.22 264);
+   * --primary-foreground: oklch(1 0 0);
    */
+}
+
+.dark {
+  /* Los mismos tokens, con los valores del modo oscuro. */
+}
+
+/* TIPOGRAFÍAS Y ESCALAS -> sí van en @theme.
+ *
+ * Basecoat las define directamente ahí, sin indirección, así que
+ * sobreescribirlas en @theme es lo correcto. */
+@theme {
+  /* --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif; */
 }
