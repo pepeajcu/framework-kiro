@@ -121,7 +121,7 @@ Most components are CSS classes only. Nine complex ones ship Jinja macros in
 
 ```jinja
 {% from "basecoat/select.html.jinja" import select %}
-{{ select(name="city", items=[{"value": "gt", "label": "Guatemala"}]) }}
+{{ select(name="city", items=[{"value": "mad", "label": "Madrid"}]) }}
 ```
 
 **HTMX pattern.** The server returns HTML fragments, never JSON:

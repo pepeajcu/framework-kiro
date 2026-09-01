@@ -58,8 +58,8 @@ warns you.
   name="city",
   placeholder="Choose a city",
   items=[
-    {"value": "gt", "label": "Guatemala City"},
-    {"value": "ant", "label": "Antigua"},
+    {"value": "mad", "label": "Madrid"},
+    {"value": "bcn", "label": "Barcelona"},
   ]
 ) }}
 ```
