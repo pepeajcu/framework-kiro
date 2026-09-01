@@ -24,7 +24,15 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", str(get_settings().database_url))
+# The URL comes from the application, unless the caller already set one.
+#
+# The test suite points Alembic at the `<db>_test` database this way (see
+# `tests/conftest.py`). Overwriting it unconditionally would migrate the
+# DEVELOPMENT database instead and leave the test one empty — and the suite
+# would keep passing until the first test that queries a table, with a failure
+# that gives no hint about its cause.
+if not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", str(get_settings().database_url))
 
 target_metadata = Base.metadata
 

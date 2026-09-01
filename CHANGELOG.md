@@ -76,6 +76,17 @@ renderizadas en servidor, habla con PostgreSQL y pasa su propia puerta de calida
   cero con tres combinaciones de opciones y corre su suite.
 - `[SEGURO]` Pre-commit con ruff, mypy `--strict` y shellcheck.
 
+### Corregido
+
+- `[SEGURO]` **`migrations/env.py` pisaba la URL fijada por su llamador.** La
+  suite de tests apunta Alembic a la base `<db>_test`, pero `env.py` la
+  sobreescribía sin comprobarlo: `alembic upgrade` migraba la base de
+  DESARROLLO y dejaba la de test vacía. Los tests seguían pasando —no había
+  tablas que consultar todavía— y el fallo solo aparecía con la primera
+  migración del proyecto, lejos de su causa. Encontrado al construir el primer
+  catálogo real sobre el framework.
+  Añadido `tests/test_database_isolation.py` como guarda de regresión.
+
 ### Decisiones registradas
 
 ADRs 0001–0007. Tres contradicen el documento de visión original y son las que
