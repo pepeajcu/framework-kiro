@@ -11,7 +11,7 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
-## [Unreleased] — v0.1.0 · Esqueleto
+## [0.1.0] — 2026-09-03 · Esqueleto
 
 Primera versión utilizable. Un proyecto generado arranca, sirve páginas
 renderizadas en servidor, habla con PostgreSQL y pasa su propia puerta de calidad.
@@ -78,7 +78,7 @@ renderizadas en servidor, habla con PostgreSQL y pasa su propia puerta de calida
 
 ### Corregido
 
-Los cuatro salieron de construir un catálogo real sobre el framework, no de
+Todos salieron de construir un catálogo real sobre el framework, no de
 revisar el código: ninguno se detecta sin un proyecto de verdad encima.
 
 - `[SEGURO]` **`make seed` estaba roto.** El Makefile invocaba `scripts.seed`,
@@ -105,7 +105,6 @@ revisar el código: ninguno se detecta sin un proyecto de verdad encima.
 - `[SEGURO]` Aviso en `demo_ping` de que al borrarlo se pierde
   `test_htmx_fragment_is_not_a_full_document`, que vigila un invariante real:
   un endpoint HTMX devuelve un fragmento, nunca un documento completo.
-
 - `[SEGURO]` **`migrations/env.py` pisaba la URL fijada por su llamador.** La
   suite de tests apunta Alembic a la base `<db>_test`, pero `env.py` la
   sobreescribía sin comprobarlo: `alembic upgrade` migraba la base de
@@ -137,4 +136,4 @@ más importa conocer:
 - **Starlette 1.6** marca `httpx` v1 como obsoleta para su `TestClient`. Kiro usa
   `httpx2`, que sirve además para las llamadas HTTP salientes.
 
-[Unreleased]: https://github.com/pepeajcu/framework-kiro/commits/main
+[0.1.0]: https://github.com/pepeajcu/framework-kiro/releases/tag/v0.1.0

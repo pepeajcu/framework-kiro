@@ -2,7 +2,7 @@
 
 **FRAMEWORK-ONLY** — `setup.sh` elimina esta carpeta de los proyectos generados.
 
-## v0.1.0 — Esqueleto  *(en curso)*
+## v0.1.0 — Esqueleto  *(publicada — 2026-09-03)*
 
 Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 
@@ -22,9 +22,10 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] `make check`: lint + tipos + tests + migraciones
 - [x] CI: puerta de calidad + e2e que genera un proyecto y corre su suite
 - [x] ADRs 0001–0007
-- [ ] Prueba real: sesión nueva de IA sobre un proyecto generado, sin contexto
+- [x] Prueba real: sesión nueva de IA sobre un proyecto generado, sin contexto
+      — de ahí salieron todos los fallos de la sección «Corregido» del CHANGELOG
 
-## v0.2.0 — Auth, correo y seguridad
+## v0.2.0 — Auth, correo y seguridad  *(en curso)*
 
 - [ ] Modelos `User`, `Role`, `Session`, `PasswordResetToken`
 - [ ] Registro y login con argon2id
