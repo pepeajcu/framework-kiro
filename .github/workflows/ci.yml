@@ -84,6 +84,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Sin esto, build-push-action usa el driver 'docker' por defecto, que no
+      # sabe exportar caché: buildx rechaza 'cache-to' antes de compilar nada y
+      # el job muere en cuatro segundos. El error no habla de caché, así que
+      # parece que la imagen no compila. Este paso crea un builder con driver
+      # 'docker-container', que sí la soporta.
+      - uses: docker/setup-buildx-action@v3
+
       - name: Construir la imagen de producción
         uses: docker/build-push-action@v6
         with:
