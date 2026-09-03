@@ -118,13 +118,16 @@ from app.models.user import User
 
 AdminUser = Annotated[User, Depends(require_role("admin"))]
 
-@router.get("/")            # public — but the header knows who you are
+
+@router.get("/")  # public — but the header knows who you are
 def home(request: Request, user: OptionalUser) -> HTMLResponse: ...
 
-@router.get("/panel")       # anonymous → 303 to /login?next=…
+
+@router.get("/panel")  # anonymous → 303 to /login?next=…
 def panel(request: Request, user: CurrentUser) -> HTMLResponse: ...
 
-@router.get("/admin")       # logged in without the role → 403 page
+
+@router.get("/admin")  # logged in without the role → 403 page
 def admin(request: Request, user: AdminUser) -> HTMLResponse: ...
 ```
 
@@ -190,9 +193,9 @@ Never instantiate a provider by hand and never read `EMAIL_PROVIDER` outside
 from app.deps import Emailer
 from app.emails import render_email
 
+
 def send_reset_link(emailer: Emailer, address: str, url: str) -> None:
-    emailer.send(render_email("password_reset", to=address, reset_url=url,
-                              expires_in_minutes=30))
+    emailer.send(render_email("password_reset", to=address, reset_url=url, expires_in_minutes=30))
 ```
 
 Each email is **two files** in `app/templates/emails/`: `<name>.html`, which

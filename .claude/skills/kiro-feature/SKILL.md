@@ -166,13 +166,11 @@ def list_providers(request: Request, db: DbSession, user: OptionalUser) -> HTMLR
 
 
 @router.get("/{slug}", response_class=HTMLResponse)
-def provider_detail(
-    request: Request, db: DbSession, user: OptionalUser, slug: str
-) -> HTMLResponse:
+def provider_detail(request: Request, db: DbSession, user: OptionalUser, slug: str) -> HTMLResponse:
     """A single provider's page."""
     provider = ProviderRepository(db).get_by_slug(slug)
     if provider is None:
-        raise NotFoundError("Provider", slug)   # renders the 404 page
+        raise NotFoundError("Provider", slug)  # renders the 404 page
     return render(request, "pages/providers/detail.html", {"provider": provider})
 ```
 
@@ -185,6 +183,7 @@ Register it in `app/main.py`:
 
 ```python
 from app.routers import health, pages, providers
+
 ...
 app.include_router(providers.router)
 ```

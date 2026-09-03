@@ -59,9 +59,7 @@ def test_migrations_ran_against_the_test_database(db_session: Session) -> None:
     if not list(versions.glob("*.py")):
         pytest.skip("aún no hay migraciones: no hay nada que verificar")
 
-    exists = db_session.execute(
-        text("SELECT to_regclass('public.alembic_version')")
-    ).scalar()
+    exists = db_session.execute(text("SELECT to_regclass('public.alembic_version')")).scalar()
 
     assert exists is not None, (
         "las migraciones no se aplicaron a la base de test. "

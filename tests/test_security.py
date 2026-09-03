@@ -144,9 +144,7 @@ def test_the_content_security_policy_locks_down_the_dangerous_directives(client)
 
 
 def test_the_policy_renders_from_the_dict(client):
-    assert client.get("/").headers["Content-Security-Policy"] == build_csp(
-        CONTENT_SECURITY_POLICY
-    )
+    assert client.get("/").headers["Content-Security-Policy"] == build_csp(CONTENT_SECURITY_POLICY)
 
 
 def test_hsts_is_sent_only_once_deployed(db_session, mailbox):
@@ -156,9 +154,7 @@ def test_hsts_is_sent_only_once_deployed(db_session, mailbox):
     with TestClient(local) as client:
         assert "Strict-Transport-Security" not in client.get("/").headers
 
-    deployed_settings = get_settings().model_copy(
-        update={"environment": Environment.PRODUCTION}
-    )
+    deployed_settings = get_settings().model_copy(update={"environment": Environment.PRODUCTION})
     deployed = create_app(deployed_settings, enforce_csrf=False)
     override_dependencies(deployed, db_session, mailbox, settings=deployed_settings)
     with TestClient(deployed) as client:
@@ -315,9 +311,7 @@ def test_login_stops_answering_after_too_many_wrong_passwords(db_session, mailbo
 
         blocked = client.post("/login", data={"email": user.email, "password": "no es"})
         # And the real password does not get through either: that is the point.
-        with_real_password = client.post(
-            "/login", data={"email": user.email, "password": PASSWORD}
-        )
+        with_real_password = client.post("/login", data={"email": user.email, "password": PASSWORD})
 
     assert blocked.status_code == 429
     assert "Demasiados intentos" in blocked.text
@@ -333,9 +327,10 @@ def test_getting_it_right_clears_the_counter(db_session, mailbox, user):
     with TestClient(app, follow_redirects=False) as client:
         client.post("/login", data={"email": user.email, "password": "no es"})
         client.post("/login", data={"email": user.email, "password": "tampoco"})
-        assert client.post(
-            "/login", data={"email": user.email, "password": PASSWORD}
-        ).status_code == 303
+        assert (
+            client.post("/login", data={"email": user.email, "password": PASSWORD}).status_code
+            == 303
+        )
 
         client.post("/logout")
         for _ in range(2):

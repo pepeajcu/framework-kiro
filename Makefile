@@ -65,6 +65,7 @@ css-watch:  ## Recompilar el CSS al vuelo mientras desarrollas
 
 lint:  ## Revisar estilo y errores comunes
 	uv run ruff check .
+	uv run ruff format --check .
 
 format:  ## Formatear el código y ordenar imports
 	uv run ruff format .
@@ -80,6 +81,8 @@ cov:  ## Tests con reporte de cobertura
 	uv run pytest --cov --cov-report=term-missing
 
 check: lint types test migrations-check  ## Todo lo anterior. Es lo que corre CI.
+# `lint` incluye 'ruff format --check' a propósito: CI lo comprueba, y sin él
+# se puede ir en verde en local y en rojo en CI por el formato de un archivo.
 	@echo ""
 	@echo "  \033[1;32m✓ todo en orden\033[0m"
 

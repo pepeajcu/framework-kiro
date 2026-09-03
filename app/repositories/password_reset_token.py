@@ -19,9 +19,7 @@ class PasswordResetTokenRepository(BaseRepository[PasswordResetToken]):
 
     def get_by_token(self, token: str) -> PasswordResetToken | None:
         """Find the token record for a raw token from a reset link."""
-        stmt = select(PasswordResetToken).where(
-            PasswordResetToken.token_hash == hash_token(token)
-        )
+        stmt = select(PasswordResetToken).where(PasswordResetToken.token_hash == hash_token(token))
         return self.session.scalars(stmt).one_or_none()
 
     def mark_used(self, token: PasswordResetToken) -> None:

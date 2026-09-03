@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import Environment, Settings
 from app.emails import MemoryEmailSender, render_email
 from app.emails.providers.console import ConsoleEmailSender
 from app.emails.render import _render_subject
@@ -106,7 +106,26 @@ def test_from_header_uses_the_name_when_there_is_one():
         ({"email_provider": "smtp", "smtp_host": ""}, "SMTP_HOST"),
     ],
 )
-def test_unusable_email_provider_fails_at_startup(overrides, expected):
+def test_deploying_without_email_credentials_fails_at_startup(overrides, expected):
     """Better a container that refuses to boot than a password reset that vanishes."""
     with pytest.raises(ValidationError, match=expected):
-        Settings(**VALID_SETTINGS, **overrides)
+        Settings(**VALID_SETTINGS, environment=Environment.PRODUCTION, **overrides)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"email_provider": "resend", "resend_api_key": ""},
+        {"email_provider": "smtp", "smtp_host": ""},
+    ],
+)
+def test_the_same_configuration_is_fine_locally(overrides):
+    """A generated project must run before anyone has an API key to paste.
+
+    `setup.sh` asks which email provider to use; it cannot ask for a Resend key
+    that does not exist yet. Refusing to boot here would mean a brand-new
+    project that fails `make check` on the day it is created.
+    """
+    settings = Settings(**VALID_SETTINGS, environment=Environment.LOCAL, **overrides)
+
+    assert settings.email_provider.value in {"resend", "smtp"}

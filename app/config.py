@@ -120,13 +120,21 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_email_provider_is_usable(self) -> Settings:
-        """Refuse to boot with an email provider that cannot send.
+        """Refuse to *deploy* with an email provider that cannot send.
 
-        Deliberately at startup rather than at send time: the first email a
-        project sends is usually a password reset, and discovering there that
-        `RESEND_API_KEY` was never filled in means a user locked out of their
-        account. A misconfigured deploy should fail loudly and immediately.
+        At startup rather than at send time: the first email a project sends is
+        usually a password reset, and discovering there that `RESEND_API_KEY`
+        was never filled in means a user locked out of their account.
+
+        Only in a deployed environment, though. `setup.sh` asks which provider
+        to use long before anyone has an API key to paste, so enforcing this
+        locally would mean a freshly generated project that cannot even run its
+        own tests until you sign up for Resend. In local, `get_email_sender`
+        logs a warning instead and a send fails with `EmailDeliveryError`.
         """
+        if not self.is_production:
+            return self
+
         if self.email_provider is EmailProvider.RESEND and not self.resend_api_key:
             raise ValueError("EMAIL_PROVIDER=resend requires RESEND_API_KEY")
         if self.email_provider is EmailProvider.SMTP and not self.smtp_host:
