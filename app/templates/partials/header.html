@@ -8,6 +8,24 @@
 
     <div class="flex items-center gap-2">
       {% block nav_items %}{% endblock %}
+
+      {# `user` lo inyecta render() desde request.state, así que basta con que
+         el handler de la página declare OptionalUser o CurrentUser. #}
+      {% if user %}
+        <span class="text-muted-foreground hidden text-sm sm:inline">{{ user.email }}</span>
+        {# Salir es POST, no un enlace: un <a> lo siguen los prefetchers del
+           navegador y los escáneres de correo, cerrando sesiones sin que nadie
+           las cierre. #}
+        <form method="post" action="/logout">
+          {% include "components/csrf_field.html" %}
+          <button class="btn" data-variant="ghost" data-size="sm" type="submit">Salir</button>
+        </form>
+      {% else %}
+        <a class="btn" data-variant="ghost" data-size="sm" href="/login">Entrar</a>
+        {% if settings.allow_registration %}
+          <a class="btn" data-variant="primary" data-size="sm" href="/register">Crear cuenta</a>
+        {% endif %}
+      {% endif %}
     </div>
   </nav>
 </header>

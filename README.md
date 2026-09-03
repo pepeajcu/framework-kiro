@@ -53,11 +53,23 @@ de escribirlas:
   ([ADR-0005](docs/decisions/0005-sin-nodejs.md)).
 - **Sin Alpine.js** — HTMX y el JS de Basecoat ya lo cubren; un tercer paradigma
   solo añade confusión ([ADR-0007](docs/decisions/0007-sin-alpinejs.md)).
+- **Sesiones en base de datos, no JWT** — un token autocontenido no se puede
+  revocar, así que cambiar la contraseña no echa a quien te la robó
+  ([ADR-0008](docs/decisions/0008-sesiones-en-base-de-datos.md)).
 
 ## Qué trae hecho
 
 - Instalador interactivo que genera secretos, **detecta puertos libres** y deja
-  la base de datos migrada y corriendo.
+  la base de datos migrada, sembrada y corriendo — con tu cuenta de
+  administrador ya creada.
+- **Autenticación completa**: registro, login con argon2id, sesiones revocables,
+  roles y recuperación de contraseña por correo. Ningún formulario revela si un
+  email tiene cuenta.
+- **Correo transaccional** con tres proveedores intercambiables (consola, Resend,
+  SMTP) y plantillas que editas sin tocar código.
+- **Endurecido de serie**: CSRF en todas las rutas, límites de intentos
+  respaldados por PostgreSQL, cabeceras de seguridad y un identificador por
+  petición en cada línea de log.
 - SSR completo con SEO de serie: canonical, Open Graph, páginas 404/500 propias.
 - Capa de repositorios tipada que hace cumplible la regla "ninguna query fuera
   de `repositories/`".
@@ -75,8 +87,8 @@ En desarrollo activo. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
 
 | Versión | Contenido | Estado |
 |---|---|---|
-| v0.1.0 | Esqueleto: Docker, SSR, componentes, capa IA, CI | En curso |
-| v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Pendiente |
+| v0.1.0 | Esqueleto: Docker, SSR, componentes, capa IA, CI | Publicada |
+| v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Publicada |
 | v0.3.0 | Analítica server-side y SEO | Pendiente |
 | v1.0.0 | Documentación, ejemplo completo, release público | Pendiente |
 

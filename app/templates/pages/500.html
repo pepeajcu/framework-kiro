@@ -8,6 +8,14 @@
   <p class="text-muted-foreground mx-auto mt-3 max-w-md text-pretty">
     El error quedó registrado. Vuelve a intentarlo en un momento.
   </p>
+
+  {# El identificador que aparece en los logs de esta misma petición. Con él,
+     "no me funciona" se convierte en una línea concreta que buscar. #}
+  {% if request.state.request_id is defined %}
+    <p class="text-muted-foreground mt-6 font-mono text-xs">
+      Referencia: {{ request.state.request_id }}
+    </p>
+  {% endif %}
   <a href="/" class="btn mt-6" data-variant="primary">Volver al inicio</a>
 </section>
 {% endblock %}

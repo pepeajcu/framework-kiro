@@ -47,7 +47,12 @@
   {% block head_extra %}{% endblock %}
 </head>
 
-<body class="bg-background text-foreground min-h-full antialiased {% block body_class %}{% endblock %}">
+{# hx-headers en el <body> hace que TODA petición de HTMX de la página lleve el
+   token CSRF, sin tener que acordarse en cada hx-post. Los formularios normales
+   lo llevan en un campo oculto: ver components/csrf_field.html. #}
+<body
+  class="bg-background text-foreground min-h-full antialiased {% block body_class %}{% endblock %}"
+  hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
 
   {% block layout %}
     {% include "partials/header.html" %}

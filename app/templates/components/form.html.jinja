@@ -1,0 +1,57 @@
+{#
+  Macros de formulario.
+
+  Viven en components/ porque son TUYAS: edítalas, cámbiales el diseño, añade
+  campos. Lo de basecoat/ es lo que se sobreescribe al actualizar el framework;
+  esto no.
+
+  Uso:
+    {% from "components/form.html.jinja" import field, form_error %}
+    <form method="post" action="/algo">
+      {% include "components/csrf_field.html" %}
+      {{ form_error(errors) }}
+      {{ field("email", "Email", type="email", value=email, errors=errors) }}
+    </form>
+
+  El token CSRF va aparte, como include: ver components/csrf_field.html.
+#}
+
+{% macro field(name, label, type="text", value="", errors={}, autocomplete=None,
+               required=True, autofocus=False, help=None) %}
+  {% set error = errors.get(name) %}
+  <div class="field" {% if error %}data-invalid="true"{% endif %}>
+    <label class="label" for="{{ name }}">{{ label }}</label>
+    <input
+      class="input"
+      type="{{ type }}"
+      id="{{ name }}"
+      name="{{ name }}"
+      value="{{ value or '' }}"
+      {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+      {% if required %}required{% endif %}
+      {% if autofocus %}autofocus{% endif %}
+      {# aria-invalid y aria-describedby son lo que hace que un lector de
+         pantalla anuncie el error al llegar al campo, en vez de dejarlo mudo. #}
+      {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}
+    >
+    {% if error %}
+      <p role="alert" id="{{ name }}-error" class="text-destructive text-sm">{{ error }}</p>
+    {% endif %}
+    {% if help %}
+      <p class="text-muted-foreground text-sm">{{ help }}</p>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  Error que no pertenece a ningún campo: credenciales incorrectas, contraseñas
+  que no coinciden. El servicio los agrupa bajo la clave "__all__".
+#}
+{% macro form_error(errors) %}
+  {% if errors and errors.get("__all__") %}
+    <div class="alert border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+         role="alert">
+      {{ errors["__all__"] }}
+    </div>
+  {% endif %}
+{% endmacro %}

@@ -21,11 +21,15 @@ import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import Settings, get_settings
+from app.emails import MemoryEmailSender
+from app.models.user import User
+from app.services.auth import AuthService
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -99,24 +103,102 @@ def db_session(engine: Engine) -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def client(db_session: Session) -> Generator[TestClient, None, None]:
-    """HTTP client whose requests share the test's transaction.
+def mailbox() -> MemoryEmailSender:
+    """Collects the emails a test causes to be sent.
+
+    The `client` fixture wires it in, so any test with an HTTP client can assert
+    on what was emailed — `mailbox.last.text` — without touching a network.
+    """
+    return MemoryEmailSender()
+
+
+def override_dependencies(
+    app: FastAPI,
+    db_session: Session,
+    mailbox: MemoryEmailSender,
+    settings: Settings | None = None,
+) -> None:
+    """Point an app at the test's transaction and outbox.
 
     Overriding `get_db` is what lets a test set up data and then see it through
     an HTTP request — without it, the request would open its own connection and
-    find an empty database.
+    find an empty database. Exposed as a function, not just used by the `client`
+    fixture, so a test that needs an app of its own (extra routes, different
+    settings) does not have to rebuild the wiring.
     """
+    from app.config import get_settings as get_settings_dependency
     from app.db import get_db
-    from app.main import create_app
-
-    app = create_app()
+    from app.emails import get_email_sender
 
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_email_sender] = lambda: mailbox
+    if settings is not None:
+        app.dependency_overrides[get_settings_dependency] = lambda: settings
 
-    with TestClient(app) as test_client:
+
+@pytest.fixture
+def client(db_session: Session, mailbox: MemoryEmailSender) -> Generator[TestClient, None, None]:
+    """HTTP client whose requests share the test's transaction and outbox."""
+    from app.main import create_app
+
+    # CSRF off, the way Django's test client works: otherwise every POST in
+    # every project's tests has to fetch a form first to steal its token. The
+    # protection itself is tested on purpose in tests/test_security.py.
+    app = create_app(enforce_csrf=False)
+    override_dependencies(app, db_session, mailbox)
+
+    # Redirects are not followed: Kiro answers every form POST with a 303, and a
+    # client that follows it silently turns "did the login work?" into "did the
+    # home page render?". Pass follow_redirects=True on the call when a test
+    # really wants the destination.
+    with TestClient(app, follow_redirects=False) as test_client:
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+# --- Accounts ---------------------------------------------------------------
+
+PASSWORD = "una contraseña larga de prueba"
+"""The password every fixture account uses. Long enough to pass the minimum."""
+
+
+@pytest.fixture
+def auth(db_session: Session) -> AuthService:
+    """The authentication service, wired to the test transaction."""
+    return AuthService(db_session, get_settings())
+
+
+@pytest.fixture
+def user(auth: AuthService) -> User:
+    """An ordinary account, with the default `user` role."""
+    return auth.register(email="ana@example.com", password=PASSWORD, full_name="Ana")
+
+
+@pytest.fixture
+def admin(auth: AuthService, db_session: Session) -> User:
+    """An account with the `admin` role."""
+    from app.models.role import ADMIN_ROLE
+    from app.repositories.user import RoleRepository
+
+    account = auth.register(email="jefa@example.com", password=PASSWORD, full_name="Jefa")
+    role = RoleRepository(db_session).get_by_slug(ADMIN_ROLE)
+    assert role is not None, "el rol admin lo crea la primera migración"
+    account.roles.append(role)
+    db_session.flush()
+    return account
+
+
+@pytest.fixture
+def logged_in_client(client: TestClient, user: User) -> TestClient:
+    """A client that has been through the real login form.
+
+    Through the form on purpose: a fixture that forged the cookie by hand would
+    keep passing after the login flow broke.
+    """
+    response = client.post("/login", data={"email": user.email, "password": PASSWORD})
+    assert response.status_code == 303, "el login de la fixture falló"
+    return client

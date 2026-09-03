@@ -151,7 +151,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from app.deps import DbSession
+from app.deps import DbSession, OptionalUser
 from app.repositories.provider import ProviderRepository
 from app.templating import render
 
@@ -159,25 +159,31 @@ router = APIRouter(prefix="/providers", tags=["providers"], include_in_schema=Fa
 
 
 @router.get("/", response_class=HTMLResponse)
-def list_providers(request: Request, db: DbSession) -> HTMLResponse:
+def list_providers(request: Request, db: DbSession, user: OptionalUser) -> HTMLResponse:
     """Directory of active providers."""
     providers = ProviderRepository(db).list_active()
     return render(request, "pages/providers/list.html", {"providers": providers})
 
 
 @router.get("/{slug}", response_class=HTMLResponse)
-def provider_detail(request: Request, db: DbSession, slug: str) -> HTMLResponse:
+def provider_detail(request: Request, db: DbSession, user: OptionalUser, slug: str) -> HTMLResponse:
     """A single provider's page."""
     provider = ProviderRepository(db).get_by_slug(slug)
     if provider is None:
-        raise NotFoundError("Provider", slug)   # renders the 404 page
+        raise NotFoundError("Provider", slug)  # renders the 404 page
     return render(request, "pages/providers/detail.html", {"provider": provider})
 ```
+
+`user: OptionalUser` on every page handler, even public ones — it is what
+resolves the session cookie and therefore what makes the header show who is
+logged in. Use `CurrentUser` where the page requires an account, and
+`Annotated[User, Depends(require_role("admin"))]` where it requires a role.
 
 Register it in `app/main.py`:
 
 ```python
 from app.routers import health, pages, providers
+
 ...
 app.include_router(providers.router)
 ```
@@ -211,6 +217,25 @@ Full page in `app/templates/pages/providers/list.html`:
 </div>
 {% endblock %}
 ```
+
+A form page needs the CSRF token, or the POST comes back 403:
+
+```jinja
+<form method="post" action="/providers/new" class="space-y-4">
+  {% include "components/csrf_field.html" %}
+  {{ field("name", "Nombre", value=name, errors=errors) }}
+  <button class="btn" data-variant="primary" type="submit">Guardar</button>
+</form>
+```
+
+An `include`, not a macro: Jinja macros do not see the template context unless
+imported `with context`, and forgetting that renders an empty token and fails at
+submit time. HTMX requests need nothing — `base.html` sends the token in a
+header for all of them.
+
+Answer a successful POST with a 303 redirect (post/redirect/get) and a failed
+one by re-rendering the form with a 400. `app/routers/auth.py` is the worked
+example.
 
 For an HTMX interaction, the fragment goes in `partials/` and does **not**
 extend `base.html`:

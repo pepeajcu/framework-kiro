@@ -54,15 +54,20 @@ app/
 ├── deps.py            dependencias compartidas (DbSession, AppSettings)
 ├── exceptions.py      excepciones de dominio, sin acoplar a FastAPI
 ├── templating.py      Jinja2 configurado, helper render(), asset()
+├── security.py        hashing argon2, tokens opacos, cookie de sesión
+├── logs.py            logging estructurado (JSON desplegado, legible en local)
+├── middleware/        request_id, cabeceras de seguridad, cookie CSRF
 ├── models/            tablas SQLAlchemy — base.py trae los mixins
 ├── repositories/      acceso a datos — base.py trae el CRUD genérico
 ├── services/          lógica de negocio
 ├── routers/           entrada HTTP
 ├── schemas/           validación Pydantic
+├── emails/            correo transaccional — un adaptador por proveedor
 ├── templates/
 │   ├── base.html      plantilla raíz: meta, OG, assets
 │   ├── pages/         páginas completas
 │   ├── partials/      fragmentos HTMX (NO extienden base.html)
+│   ├── emails/        plantillas de correo (.html + .txt por mensaje)
 │   ├── components/    componentes propios del proyecto
 │   └── basecoat/      macros vendorizadas — no editar
 └── static/

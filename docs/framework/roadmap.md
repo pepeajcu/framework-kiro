@@ -25,21 +25,26 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] Prueba real: sesión nueva de IA sobre un proyecto generado, sin contexto
       — de ahí salieron todos los fallos de la sección «Corregido» del CHANGELOG
 
-## v0.2.0 — Auth, correo y seguridad  *(en curso)*
+## v0.2.0 — Auth, correo y seguridad  *(publicada — 2026-09-03)*
 
-- [ ] Modelos `User`, `Role`, `Session`, `PasswordResetToken`
-- [ ] Registro y login con argon2id
-- [ ] Sesión por cookie firmada + registro en BD (revocable)
-- [ ] Recuperación de contraseña con token de un solo uso, hasheado y con caducidad
-- [ ] `require_role`, seed de admin
-- [ ] **CSRF** de doble envío, integrado con HTMX vía `hx-headers`
-- [ ] Rate limiting en login y recuperación
-- [ ] Headers de seguridad: CSP, HSTS, X-Frame-Options
-- [ ] `request_id` + logging estructurado
-- [ ] `EmailSender` como Protocol; adaptadores console, Resend y SMTP
-- [ ] Plantillas de correo editables
+- [x] Modelos `User`, `Role`, `Session`, `PasswordResetToken`
+      — el de sesión se llama **`UserSession`**: este código está lleno de
+      `sqlalchemy.orm.Session` y dos cosas con el mismo nombre en el mismo
+      archivo cuestan una tarde ([ADR-0008](../decisions/0008-sesiones-en-base-de-datos.md))
+- [x] Registro y login con argon2id
+- [x] Sesión por cookie firmada + registro en BD (revocable)
+- [x] Recuperación de contraseña con token de un solo uso, hasheado y con caducidad
+- [x] `require_role`, seed de admin
+- [x] **CSRF** de doble envío, integrado con HTMX vía `hx-headers`
+- [x] Rate limiting en login y recuperación
+- [x] Headers de seguridad: CSP, HSTS, X-Frame-Options
+- [x] `request_id` + logging estructurado, con log de acceso propio
+- [x] ADRs 0008–0010
+- [x] El e2e corre la suite entera del proyecto generado, no solo lint y tipos
+- [x] `EmailSender` como Protocol; adaptadores console, Resend y SMTP
+- [x] Plantillas de correo editables
 
-## v0.3.0 — Analítica y SEO
+## v0.3.0 — Analítica y SEO  *(siguiente)*
 
 - [ ] GTM condicionado a `GTM_ID`
 - [ ] GA4 Measurement Protocol server-side

@@ -1,0 +1,67 @@
+{#
+  Plantilla raíz de los correos. Todo correo del proyecto hereda de aquí.
+
+  Bloques:
+    subject      asunto del correo — OBLIGATORIO en cada hijo
+    preheader    texto de vista previa en la bandeja de entrada
+    content      el cuerpo
+    footer_note  línea extra bajo la firma
+
+  Dos cosas que sorprenden al venir del HTML normal:
+
+  1. **Los estilos van en línea, no en clases.** Gmail elimina la etiqueta
+     <style> de los correos que reenvía, y varios clientes nunca la leyeron.
+     Aquí no sirven ni Tailwind ni app.css.
+  2. **La maquetación va con <table>.** Outlook renderiza con el motor de Word,
+     que no implementa flexbox ni grid. Una tabla es lo único que se ve igual
+     en todas partes.
+#}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#18181b;">
+
+  {# El preheader es el texto que la bandeja de entrada enseña junto al asunto.
+     Sin él, el cliente coge las primeras palabras del cuerpo, que suelen ser
+     "Hola". Se oculta para que no se vea dos veces al abrir el correo. #}
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    {% block preheader %}{% endblock %}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border:1px solid #e4e4e7; border-radius:8px;">
+          <tr>
+            <td style="padding:32px;">
+
+              <p style="margin:0 0 24px; font-size:16px; font-weight:600; letter-spacing:-0.01em;">
+                {{ settings.app_name }}
+              </p>
+
+              {% block content %}{% endblock %}
+
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+          <tr>
+            <td style="padding:20px 8px; font-size:12px; line-height:18px; color:#71717a;">
+              {% block footer_note %}{% endblock %}
+              <p style="margin:0;">
+                {{ settings.app_name }} · <a href="{{ settings.base_url }}" style="color:#71717a;">{{ settings.base_url }}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

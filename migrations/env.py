@@ -22,7 +22,17 @@ from app.models import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False is not optional. The default is True, and
+    # it sets `.disabled = True` on every logger that already exists and is not
+    # named in alembic.ini — that is, on every logger the application created
+    # before this ran.
+    #
+    # It fails silently and far from its cause. In the test suite, loggers
+    # created at import time go quiet for the whole session and `caplog`
+    # captures nothing. In production, a project that runs `alembic upgrade
+    # head` at startup loses its application logs entirely, with no error to
+    # explain it.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # The URL comes from the application, unless the caller already set one.
 #

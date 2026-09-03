@@ -72,8 +72,24 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+
+    # Escribir en la caché de Actions necesita este permiso. Sin declararlo, el
+    # job hereda los permisos por defecto del repositorio, que pueden ser de
+    # solo lectura — y entonces la exportación de la caché falla y se lleva por
+    # delante un build que había ido bien.
+    permissions:
+      contents: read
+      actions: write
+
     steps:
       - uses: actions/checkout@v5
+
+      # Sin esto, build-push-action usa el driver 'docker' por defecto, que no
+      # sabe exportar caché: buildx rechaza 'cache-to' antes de compilar nada y
+      # el job muere en cuatro segundos. El error no habla de caché, así que
+      # parece que la imagen no compila. Este paso crea un builder con driver
+      # 'docker-container', que sí la soporta.
+      - uses: docker/setup-buildx-action@v3
 
       - name: Construir la imagen de producción
         uses: docker/build-push-action@v6
@@ -82,4 +98,8 @@ jobs:
           target: production
           push: false
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # ignore-error: una caché es una optimización. Que falle debe hacer el
+          # build más lento, nunca tumbarlo. Sin esto, un problema del servicio
+          # de caché de GitHub se presenta como "la imagen no compila", que es
+          # media hora buscando en el sitio equivocado.
+          cache-to: type=gha,mode=max,ignore-error=true
