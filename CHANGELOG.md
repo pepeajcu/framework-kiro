@@ -11,6 +11,156 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [0.2.0] — 2026-09-03 · Auth, correo y seguridad
+
+Un proyecto generado ya sabe quién le está pidiendo las páginas. Registro,
+login, sesiones revocables, recuperación de contraseña por correo, y el
+endurecimiento que hace que todo eso no sea un juguete.
+
+> **Si vienes de v0.1.0**, salta al final: *Cómo actualizar un proyecto
+> existente*. Hay dos pasos manuales, y uno de ellos rompe formularios si se
+> omite.
+
+### Autenticación
+
+- `[MIGRACIÓN]` Modelos `User`, `Role`, `UserSession` y `PasswordResetToken`,
+  con su migración. Trae también los roles `admin` y `user` sembrados: el código
+  los da por hechos, y `require_role("admin")` sobre una tabla vacía no falla —
+  niega el acceso a todo el mundo, que es peor.
+- `[SEGURO]` Contraseñas con **argon2id**. Nada fuera de `app/security.py`
+  hashea ni firma: un solo sitio que auditar.
+- `[SEGURO]` **Sesiones revocables**: la cookie lleva un token opaco firmado y
+  la tabla guarda solo su SHA-256. Cambiar la contraseña cierra todas las
+  sesiones de la cuenta, y rotar `SECRET_KEY` las cierra todas del sitio. Ver
+  [ADR-0008](docs/decisions/0008-sesiones-en-base-de-datos.md) para por qué no
+  es un JWT.
+- `[SEGURO]` Recuperación de contraseña con enlace de un solo uso, hasheado en
+  base de datos y con caducidad. Pedir uno nuevo invalida el anterior.
+- `[SEGURO]` `CurrentUser`, `OptionalUser` y `require_role(...)` en `app/deps.py`.
+  Anónimo → redirección a `/login?next=…`; identificado sin el rol → página 403.
+  Son situaciones distintas y no deben colapsar en una: mandar a un formulario
+  de login a alguien que ya entró es un bucle del que no sale.
+- `[SEGURO]` Las peticiones de HTMX a una página protegida reciben `HX-Redirect`
+  en vez de un 303, para que HTMX no incruste la página de login dentro de un
+  fragmento.
+- `[SEGURO]` **Nunca se revela si un email tiene cuenta.** Contraseña
+  incorrecta, dirección desconocida y cuenta desactivada dan el mismo mensaje y
+  el mismo tiempo de respuesta —hay un hash señuelo para que el reloj tampoco lo
+  cuente—, y `/forgot-password` responde igual exista o no la cuenta.
+- `[SEGURO]` `setup.sh` genera `ADMIN_EMAIL` / `ADMIN_PASSWORD`, siembra el
+  administrador tras migrar y enseña las credenciales al terminar.
+- `[SEGURO]` `ALLOW_REGISTRATION=false` hace que `/register` responda 404, para
+  proyectos donde las cuentas las crea un administrador.
+
+### Correo transaccional
+
+- `[SEGURO]` `app/emails/` con `EmailSender` como `Protocol` y cuatro
+  adaptadores: `console` (por defecto, imprime en stdout), `resend`, `smtp` y
+  uno en memoria para tests, que **no** es seleccionable por `EMAIL_PROVIDER`
+  para que un despliegue no pueda tragarse los correos en silencio.
+- `[SEGURO]` Plantillas editables en `app/templates/emails/`, dos archivos por
+  mensaje (`.html` y `.txt`). **El asunto vive dentro de la plantilla**, en su
+  propio bloque: cambiar el texto de un correo no debe obligar a tocar un
+  servicio.
+- `[SEGURO]` La configuración del proveedor se valida **al arrancar**. Descubrir
+  que faltaba `RESEND_API_KEY` en el primer correo de recuperación es un usuario
+  encerrado fuera de su cuenta.
+
+### Endurecimiento
+
+- `[RUPTURA]` **CSRF de doble envío**, activo en todas las rutas. Todo
+  formulario necesita `{% include "components/csrf_field.html" %}`; sin él, un
+  403. HTMX no necesita nada: `base.html` manda el token en `hx-headers`. Ver
+  [ADR-0009](docs/decisions/0009-csrf-doble-envio.md).
+- `[SEGURO]` **Límites de intentos** en login y recuperación, contados en
+  PostgreSQL por IP **y** por cuenta a la vez. En memoria del proceso no valen:
+  se vacían en cada despliegue y cada worker lleva el suyo, así que con cuatro
+  workers un límite de 10 son 40.
+- `[SEGURO]` **Cabeceras de seguridad** en toda respuesta, con la CSP escrita
+  como diccionario editable. Lleva `'unsafe-inline'` en `script-src` porque los
+  macros de Basecoat traen handlers `onclick`; el porqué y cómo apretarla, en
+  [ADR-0010](docs/decisions/0010-cabeceras-de-seguridad-y-csp.md). HSTS solo en
+  entorno desplegado.
+- `[SEGURO]` **Un identificador por petición**: en `X-Request-ID`, en cada línea
+  de log y en la página 500, para que "no me funciona" se convierta en una línea
+  concreta que buscar. Sustituye al log de acceso de uvicorn, que se emite fuera
+  de la aplicación y por eso no lo lleva.
+- `[SEGURO]` Logging estructurado: JSON por línea en entorno desplegado, línea
+  legible en local. Lo que pases en `extra={...}` viaja como campos.
+
+### Corregido
+
+Los tres salieron de usar el framework, no de revisarlo.
+
+- `[SEGURO]` **El hook de Alembic solo formateaba, no pasaba el linter.** La
+  primera migración de *cualquier* proyecto rompía `make check` nada más
+  generarse, por el orden de sus imports. Añadido `ruff check --fix` como hook
+  previo en `alembic.ini`.
+- `[SEGURO]` **`migrations/env.py` apagaba todos los loggers.** `fileConfig()`
+  desactiva por defecto cualquier logger que ya existiera. En los tests dejaba
+  mudo el `caplog` de cualquier proyecto; en producción, un proyecto que corra
+  `alembic upgrade head` al arrancar pierde TODOS sus logs, sin un error que lo
+  explique. Guarda de regresión en `tests/test_database_isolation.py`.
+- `[SEGURO]` **El proveedor de correo `console` imprimía sin `flush`.** Con la
+  salida redirigida a un archivo, a un gestor de procesos o a un contenedor sin
+  `PYTHONUNBUFFERED`, el enlace de recuperación se quedaba en el buffer y
+  parecía que no se enviaba nada.
+
+### Infraestructura
+
+- `[SEGURO]` El workflow e2e ahora **corre la suite entera** del proyecto
+  generado: levanta PostgreSQL con el propio `setup.sh`, migra, siembra y pasa
+  `make check`, además de arrancar la app y comprobar que sirve páginas con sus
+  cabeceras. Antes solo pasaba lint y tipos, así que nada de lo que vive en la
+  base de datos estaba cubierto.
+- `[SEGURO]` Dos dependencias nuevas: `argon2-cffi` y el extra `pydantic[email]`.
+  Ninguna trae Node ni rompe [ADR-0005](docs/decisions/0005-sin-nodejs.md). La
+  imagen de producción pasa de ~390 a ~400 MB.
+
+### Decisiones registradas
+
+- [0008](docs/decisions/0008-sesiones-en-base-de-datos.md) — sesiones en base de
+  datos, no JWT; argon2id para contraseñas.
+- [0009](docs/decisions/0009-csrf-doble-envio.md) — CSRF de doble envío,
+  validado como dependencia y no como middleware.
+- [0010](docs/decisions/0010-cabeceras-de-seguridad-y-csp.md) — cabeceras de
+  seguridad, y por qué la CSP lleva `'unsafe-inline'`.
+
+### Cómo actualizar un proyecto existente
+
+1. Trae el código nuevo:
+
+   ```bash
+   git checkout upstream/main -- app/security.py app/logs.py app/emails/ \
+     app/middleware/ app/models/ app/repositories/ app/services/ app/schemas/ \
+     app/routers/auth.py app/deps.py app/templating.py app/main.py \
+     app/templates/emails/ app/templates/pages/auth/ \
+     app/templates/components/csrf_field.html migrations/env.py alembic.ini
+   uv add "argon2-cffi>=23.1" "pydantic[email]>=2.10"
+   ```
+
+2. **Migra.** Las tablas nuevas no existen en tu base:
+
+   ```bash
+   git checkout upstream/main -- migrations/versions/
+   make migrate
+   ```
+
+3. **Añade el token CSRF a tus formularios.** Este es el paso que rompe cosas si
+   se salta: todo `<form method="post">` que ya tuvieras empezará a recibir un
+   403 hasta que lleve dentro
+   `{% include "components/csrf_field.html" %}`. Si tu `base.html` está
+   personalizado, cópiale también el `hx-headers` del `<body>`.
+
+4. **Declara `user` en tus handlers de página.** `OptionalUser` en las públicas,
+   `CurrentUser` en las privadas. Sin eso la cabecera renderiza como si no
+   hubiera nadie identificado.
+
+5. Añade al `.env` las variables nuevas (las tienes documentadas en
+   `.env.example`) y corre `make seed` para crear el administrador.
+
+6. `make check`.
+
 ## [0.1.0] — 2026-09-03 · Esqueleto
 
 Primera versión utilizable. Un proyecto generado arranca, sirve páginas
@@ -136,4 +286,5 @@ más importa conocer:
 - **Starlette 1.6** marca `httpx` v1 como obsoleta para su `TestClient`. Kiro usa
   `httpx2`, que sirve además para las llamadas HTTP salientes.
 
+[0.2.0]: https://github.com/pepeajcu/framework-kiro/releases/tag/v0.2.0
 [0.1.0]: https://github.com/pepeajcu/framework-kiro/releases/tag/v0.1.0
