@@ -76,13 +76,16 @@ def render(
     Thin wrapper over Starlette's `TemplateResponse` that keeps `request` out of
     every call site's context dict.
 
-    `user` is added automatically from `request.state`, where the
-    authentication dependencies leave it, so the header renders correctly
-    without every handler remembering to pass it. It is None on pages whose
-    handler does not declare `OptionalUser` or `CurrentUser`.
+    `user` and `csrf_token` are added automatically from `request.state`,
+    where the authentication dependencies and the CSRF middleware leave them, so
+    no handler has to pass them. `user` is None on pages whose handler does not
+    declare `OptionalUser` or `CurrentUser`.
     """
     merged = dict(context or {})
     merged.setdefault("user", getattr(request.state, "user", None))
+    # Left there by CsrfCookieMiddleware. Every form needs it, so no template
+    # should have to be passed it by hand.
+    merged.setdefault("csrf_token", getattr(request.state, "csrf_token", ""))
 
     return templates.TemplateResponse(
         request=request,

@@ -62,6 +62,7 @@ router → service → repository → model → Jinja template → HTML
 | `app/templates/` | Jinja2. `pages/` full pages, `partials/` HTMX fragments |
 | `app/emails/` | Transactional email: one adapter per provider, plus rendering |
 | `app/security.py` | argon2 hashing, opaque tokens, session cookie flags |
+| `app/middleware/` | request id, security headers, CSRF cookie |
 
 ## Hard rules
 
@@ -141,6 +142,44 @@ Rules that are not obvious from the code:
   form with a 400 on failure. Never 200 on a rejected form.
 - **Changing a password revokes every session and every pending reset link.**
   `AuthService.set_password` already does it; do not bypass it.
+
+## Forms and CSRF
+
+**Every form that POSTs needs one line**, or the request comes back 403:
+
+```jinja
+<form method="post" action="/providers/new">
+  {% include "components/csrf_field.html" %}
+  ...
+</form>
+```
+
+An `include`, not a macro: Jinja macros do not see the template context unless
+imported `with context`, and forgetting that renders an empty token and fails at
+submit time with a 403 that explains nothing.
+
+**HTMX needs nothing.** `base.html` puts the token on the body via `hx-headers`,
+so every `hx-post` on the page already carries it.
+
+Validation is a global dependency in `app/main.py`, so a new route is protected
+by existing. Do not add per-route CSRF checks, and do not read the form inside a
+middleware — that consumes the request body and the handler receives nothing.
+
+## Hardening you get for free
+
+Set up once in `create_app`; you do not call any of it, but know it is there:
+
+- **Security headers** on every response (`app/middleware/security_headers.py`).
+  The CSP lives in a dict you can edit. It carries `'unsafe-inline'` in
+  `script-src` because Basecoat's dialog, command and toast macros ship inline
+  `onclick` handlers — see ADR-0010 before "fixing" that.
+- **A request id** on every request, echoed in `X-Request-ID`, attached to every
+  log line, and printed on the 500 page. Log with `extra={...}` and the fields
+  travel into the JSON.
+- **Rate limiting** on login and password reset, counted in PostgreSQL per IP
+  *and* per account. To limit something else, use `RateLimiter` from
+  `app/services/rate_limit.py`; do not count in a module-level dict, which
+  resets on deploy and counts separately in each worker.
 
 ## Transactional email
 

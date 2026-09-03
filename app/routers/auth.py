@@ -11,6 +11,7 @@ form carrying a 400 on failure.
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response
@@ -28,6 +29,12 @@ from app.security import (
     unsign_session_token,
 )
 from app.services.auth import AuthService
+from app.services.rate_limit import (
+    RateLimit,
+    RateLimiter,
+    login_buckets,
+    password_reset_buckets,
+)
 from app.templating import render
 
 router = APIRouter(tags=["auth"], include_in_schema=False)
@@ -35,6 +42,9 @@ router = APIRouter(tags=["auth"], include_in_schema=False)
 # 303 rather than 302: it tells the browser to follow up with a GET, which is
 # the whole point of post/redirect/get. A 302 lets it repeat the POST.
 SEE_OTHER = 303
+TOO_MANY_REQUESTS = 429
+
+RATE_LIMITED_MESSAGE = "Demasiados intentos. Espera unos minutos y vuelve a probar."
 
 
 def safe_next_url(candidate: str | None) -> str:
@@ -84,6 +94,25 @@ def login(
     target = safe_next_url(next_url)
     service = AuthService(db, settings)
 
+    ip, user_agent = _client_fingerprint(request)
+    limiter = RateLimiter(db)
+    buckets = login_buckets(ip=ip, email=email)
+    limit = RateLimit(
+        max_attempts=settings.login_max_attempts,
+        window=dt.timedelta(minutes=settings.login_window_minutes),
+    )
+
+    # Checked before validating anything: the point of the limit is to stop
+    # spending an argon2 verification per attempt, and that is the expensive
+    # part an attacker is trying to make us repeat.
+    if limiter.is_blocked(buckets, limit):
+        return render(
+            request,
+            "pages/auth/login.html",
+            {"errors": {"__all__": RATE_LIMITED_MESSAGE}, "email": email, "next": target},
+            status_code=TOO_MANY_REQUESTS,
+        )
+
     try:
         form = LoginForm(email=email, password=password)
         user = service.authenticate(email=form.email, password=form.password)
@@ -95,6 +124,10 @@ def login(
             status_code=400,
         )
     except InvalidCredentialsError:
+        # Only real credential failures count. A malformed address never reached
+        # a password check, and counting typos would lock people out of their
+        # own accounts for spelling.
+        limiter.record(buckets)
         # One message for a wrong password, an unknown address and a disabled
         # account. Which one it was is not the visitor's business unless they
         # own the account.
@@ -109,7 +142,8 @@ def login(
             status_code=400,
         )
 
-    ip, user_agent = _client_fingerprint(request)
+    # The attempts that led here were somebody remembering their own password.
+    limiter.reset(buckets)
     token = service.start_session(user, ip_address=ip, user_agent=user_agent)
 
     response = RedirectResponse(target, status_code=SEE_OTHER)
@@ -230,6 +264,26 @@ def forgot_password(
             {"errors": form_errors(exc), "email": email},
             status_code=400,
         )
+
+    ip, _ = _client_fingerprint(request)
+    limiter = RateLimiter(db)
+    buckets = password_reset_buckets(ip=ip, email=form.email)
+    limit = RateLimit(
+        max_attempts=settings.password_reset_max_requests,
+        window=dt.timedelta(minutes=settings.password_reset_window_minutes),
+    )
+
+    # Every request here puts a message in somebody's inbox, so the limit is
+    # tighter and counts every attempt, not just the failed ones. Without it the
+    # form is a way to have a stranger's mailbox flooded.
+    if limiter.is_blocked(buckets, limit):
+        return render(
+            request,
+            "pages/auth/forgot_password.html",
+            {"errors": {"__all__": RATE_LIMITED_MESSAGE}, "email": email},
+            status_code=TOO_MANY_REQUESTS,
+        )
+    limiter.record(buckets)
 
     AuthService(db, settings).request_password_reset(form.email, emailer=emailer)
 

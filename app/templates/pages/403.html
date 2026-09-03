@@ -12,11 +12,24 @@
 {% block content %}
 <section class="mx-auto max-w-lg py-16 text-center">
   <p class="text-muted-foreground font-mono text-sm">403</p>
-  <h1 class="mt-2 text-3xl font-semibold tracking-tight">Sin permiso</h1>
-  <p class="text-muted-foreground mt-3 text-pretty">
-    Tu cuenta no tiene acceso a esta página. Si crees que debería tenerlo,
-    habla con quien administre el sitio.
-  </p>
+
+  {# Un fallo de CSRF casi nunca es un ataque: es un formulario que llevaba
+     horas abierto. Decirle a esa persona "sin permiso" la deja sin saber qué
+     hacer; decirle que lo recargue, no. #}
+  {% if reason == "csrf" %}
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight">El formulario ha caducado</h1>
+    <p class="text-muted-foreground mt-3 text-pretty">
+      Por seguridad, los formularios dejan de valer al cabo de un tiempo.
+      Vuelve atrás, recarga la página y envíalo otra vez.
+    </p>
+  {% else %}
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight">Sin permiso</h1>
+    <p class="text-muted-foreground mt-3 text-pretty">
+      Tu cuenta no tiene acceso a esta página. Si crees que debería tenerlo,
+      habla con quien administre el sitio.
+    </p>
+  {% endif %}
+
   <a class="btn mt-6" data-variant="primary" href="/">Volver al inicio</a>
 </section>
 {% endblock %}

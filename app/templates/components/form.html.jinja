@@ -7,8 +7,13 @@
 
   Uso:
     {% from "components/form.html.jinja" import field, form_error %}
-    {{ form_error(errors) }}
-    {{ field("email", "Email", type="email", value=email, errors=errors) }}
+    <form method="post" action="/algo">
+      {% include "components/csrf_field.html" %}
+      {{ form_error(errors) }}
+      {{ field("email", "Email", type="email", value=email, errors=errors) }}
+    </form>
+
+  El token CSRF va aparte, como include: ver components/csrf_field.html.
 #}
 
 {% macro field(name, label, type="text", value="", errors={}, autocomplete=None,

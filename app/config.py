@@ -73,6 +73,18 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: str = ""
 
+    # --- Rate limiting ---
+    # Counted per IP and per account, so neither hammering one account nor
+    # spraying one password across many accounts gets an unlimited number of
+    # tries. Generous enough that a person mistyping their own password three
+    # times in a row never notices.
+    login_max_attempts: int = 10
+    login_window_minutes: int = 15
+    # Reset requests are rarer and each one sends an email, so a tighter limit:
+    # without it the form is a way to have somebody's inbox flooded.
+    password_reset_max_requests: int = 5
+    password_reset_window_minutes: int = 60
+
     # --- Transactional email ---
     # `console` prints to stdout instead of sending. It is the default on
     # purpose: a fresh checkout must never be able to email a real person.

@@ -49,6 +49,15 @@ class InvalidCredentialsError(KiroError):
     """
 
 
+class CsrfError(KiroError):
+    """A state-changing request arrived without a matching CSRF token.
+
+    Usually not an attack: a form left open long enough for its token to expire
+    produces exactly this. The page it renders says so, instead of accusing the
+    visitor of something.
+    """
+
+
 class InvalidTokenError(KiroError):
     """A signed or single-use token is unknown, expired or already spent."""
 

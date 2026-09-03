@@ -17,6 +17,7 @@
            navegador y los escáneres de correo, cerrando sesiones sin que nadie
            las cierre. #}
         <form method="post" action="/logout">
+          {% include "components/csrf_field.html" %}
           <button class="btn" data-variant="ghost" data-size="sm" type="submit">Salir</button>
         </form>
       {% else %}

@@ -11,6 +11,7 @@
 {# `errors` solo llega cuando la validación ha fallado. #}
 {% set errors = errors | default({}) %}
 <form method="post" action="/register" class="space-y-4">
+  {% include "components/csrf_field.html" %}
   {{ form_error(errors) }}
 
   {{ field("full_name", "Nombre", value=full_name, errors=errors,

@@ -351,6 +351,13 @@ ALLOW_REGISTRATION=true
 ADMIN_EMAIL="$ADMIN_EMAIL"
 ADMIN_PASSWORD="$ADMIN_PASSWORD"
 
+# --- Límites de intentos ---
+# Se cuentan por IP y por cuenta a la vez.
+LOGIN_MAX_ATTEMPTS=10
+LOGIN_WINDOW_MINUTES=15
+PASSWORD_RESET_MAX_REQUESTS=5
+PASSWORD_RESET_WINDOW_MINUTES=60
+
 # --- Correo transaccional ---
 # 'console' imprime los correos en stdout: es el valor seguro en local.
 # console | resend | smtp

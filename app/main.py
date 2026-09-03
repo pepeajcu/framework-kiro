@@ -9,23 +9,37 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import Settings, get_settings
-from app.exceptions import AuthenticationRequiredError, NotFoundError, PermissionDeniedError
+from app.exceptions import (
+    AuthenticationRequiredError,
+    CsrfError,
+    NotFoundError,
+    PermissionDeniedError,
+)
+from app.logs import configure_logging
+from app.middleware.access_log import AccessLogMiddleware
+from app.middleware.csrf import CsrfCookieMiddleware, csrf_guard
+from app.middleware.request_id import RequestIdMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.routers import auth, health, pages
 from app.templating import STATIC_DIR, render
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, *, enforce_csrf: bool = True) -> FastAPI:
     """Build the FastAPI application.
 
     Written as a factory so tests can construct an app with overridden settings
     instead of mutating global state.
+
+    `enforce_csrf=False` is for the test suite only — see `app/middleware/csrf.py`
+    for why it is a parameter here and not an environment variable.
     """
     settings = settings or get_settings()
+    configure_logging(settings)
 
     app = FastAPI(
         title=settings.app_name,
@@ -33,9 +47,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
         openapi_url=None if settings.is_production else "/openapi.json",
+        # A global dependency, so a new route is protected by existing rather
+        # than by remembering to add something to it.
+        dependencies=[Depends(csrf_guard(enforce=enforce_csrf))],
     )
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    # Added inner-to-outer: Starlette runs the LAST one added first, so the
+    # request id is bound before anything else can log, and the security headers
+    # land on every response including the ones the CSRF check rejects.
+    app.add_middleware(CsrfCookieMiddleware, settings=settings)
+    app.add_middleware(SecurityHeadersMiddleware, settings=settings)
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(RequestIdMiddleware)
 
     app.include_router(health.router)
     app.include_router(auth.router)
@@ -52,6 +77,11 @@ def register_error_handlers(app: FastAPI) -> None:
     plain-text default: a 404 is a page a visitor can act on, and Google indexes
     it like any other.
     """
+
+    @app.exception_handler(CsrfError)
+    def handle_csrf(request: Request, exc: Exception) -> HTMLResponse:
+        """A form arrived without a valid token."""
+        return render(request, "pages/403.html", {"reason": "csrf"}, status_code=403)
 
     @app.exception_handler(AuthenticationRequiredError)
     def handle_authentication_required(request: Request, exc: Exception) -> Response:

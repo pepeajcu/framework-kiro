@@ -1,0 +1,19 @@
+{#
+  El campo oculto con el token CSRF. Va en TODO formulario que haga POST; sin
+  él la petición se rechaza con un 403.
+
+      <form method="post" action="/algo">
+        {% include "components/csrf_field.html" %}
+        ...
+      </form>
+
+  Es un include y no un macro a propósito: los macros de Jinja NO ven el
+  contexto de la plantilla salvo que se importen con 'with context', y olvidarlo
+  no da error — renderiza un token vacío y el formulario falla al enviarse, con
+  un 403 que no explica nada. Un include recibe el contexto siempre.
+
+  El valor lo pone render() desde request.state, así que el handler no tiene que
+  pasar nada. Las peticiones de HTMX no lo necesitan: base.html manda el token
+  en una cabecera para todas ellas de una vez.
+#}
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">

@@ -75,7 +75,7 @@ def test_register_rejects_a_short_password(client):
 def test_registration_can_be_switched_off(db_session, mailbox):
     """A project without public sign-up should not have a /register page at all."""
     settings = get_settings().model_copy(update={"allow_registration": False})
-    app = create_app()
+    app = create_app(enforce_csrf=False)
     override_dependencies(app, db_session, mailbox, settings=settings)
 
     with TestClient(app) as client:
@@ -199,7 +199,7 @@ def test_an_expired_session_stops_working(logged_in_client, db_session, user):
 
 def guarded_app(db_session, mailbox) -> FastAPI:
     """An app with two protected routes, to exercise the dependencies."""
-    app = create_app()
+    app = create_app(enforce_csrf=False)
     override_dependencies(app, db_session, mailbox)
 
     @app.get("/_test/private", response_class=PlainTextResponse)

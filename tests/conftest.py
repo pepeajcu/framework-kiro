@@ -144,7 +144,10 @@ def client(db_session: Session, mailbox: MemoryEmailSender) -> Generator[TestCli
     """HTTP client whose requests share the test's transaction and outbox."""
     from app.main import create_app
 
-    app = create_app()
+    # CSRF off, the way Django's test client works: otherwise every POST in
+    # every project's tests has to fetch a form first to steal its token. The
+    # protection itself is tested on purpose in tests/test_security.py.
+    app = create_app(enforce_csrf=False)
     override_dependencies(app, db_session, mailbox)
 
     # Redirects are not followed: Kiro answers every form POST with a 303, and a

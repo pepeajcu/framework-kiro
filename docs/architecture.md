@@ -55,6 +55,8 @@ app/
 ├── exceptions.py      excepciones de dominio, sin acoplar a FastAPI
 ├── templating.py      Jinja2 configurado, helper render(), asset()
 ├── security.py        hashing argon2, tokens opacos, cookie de sesión
+├── logs.py            logging estructurado (JSON desplegado, legible en local)
+├── middleware/        request_id, cabeceras de seguridad, cookie CSRF
 ├── models/            tablas SQLAlchemy — base.py trae los mixins
 ├── repositories/      acceso a datos — base.py trae el CRUD genérico
 ├── services/          lógica de negocio
