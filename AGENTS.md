@@ -60,6 +60,7 @@ router → service → repository → model → Jinja template → HTML
 | `app/models/` | SQLAlchemy tables |
 | `app/schemas/` | Pydantic input/output validation |
 | `app/templates/` | Jinja2. `pages/` full pages, `partials/` HTMX fragments |
+| `app/emails/` | Transactional email: one adapter per provider, plus rendering |
 
 ## Hard rules
 
@@ -96,6 +97,34 @@ examples. In short, in this order:
 7. Templates: full page in `pages/`, HTMX fragments in `partials/`
 8. Tests in `tests/`
 9. `make check`
+
+## Transactional email
+
+Never instantiate a provider by hand and never read `EMAIL_PROVIDER` outside
+`app/config.py`. Inject the sender and render a template:
+
+```python
+from app.deps import Emailer
+from app.emails import render_email
+
+def send_reset_link(emailer: Emailer, address: str, url: str) -> None:
+    emailer.send(render_email("password_reset", to=address, reset_url=url,
+                              expires_in_minutes=30))
+```
+
+Each email is **two files** in `app/templates/emails/`: `<name>.html`, which
+must declare `{% block subject %}`, and `<name>.txt`. The plain-text one is not
+optional — a message without it looks empty in clients that block HTML. The
+subject lives in the template so that rewriting a message never means editing a
+service.
+
+`EMAIL_PROVIDER=console` (the default) prints emails to stdout instead of
+sending them. Nothing leaves a developer machine.
+
+**The HTTP library is `httpx2`, not `httpx`.** `import httpx` raises
+`ModuleNotFoundError`: the installed package is httpx2, the successor, and it
+exposes that module name. It covers both outgoing calls and Starlette's
+`TestClient`.
 
 ## Frontend specifics
 

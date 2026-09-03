@@ -59,10 +59,12 @@ app/
 ├── services/          lógica de negocio
 ├── routers/           entrada HTTP
 ├── schemas/           validación Pydantic
+├── emails/            correo transaccional — un adaptador por proveedor
 ├── templates/
 │   ├── base.html      plantilla raíz: meta, OG, assets
 │   ├── pages/         páginas completas
 │   ├── partials/      fragmentos HTMX (NO extienden base.html)
+│   ├── emails/        plantillas de correo (.html + .txt por mensaje)
 │   ├── components/    componentes propios del proyecto
 │   └── basecoat/      macros vendorizadas — no editar
 └── static/

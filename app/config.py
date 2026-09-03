@@ -10,7 +10,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, computed_field
+from pydantic import Field, PostgresDsn, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,14 @@ class Environment(StrEnum):
     LOCAL = "local"
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+class EmailProvider(StrEnum):
+    """Transactional email backend. One adapter per value, in `app/emails/`."""
+
+    CONSOLE = "console"
+    RESEND = "resend"
+    SMTP = "smtp"
 
 
 class Settings(BaseSettings):
@@ -48,6 +56,22 @@ class Settings(BaseSettings):
     # where there is no incoming request to derive the host from.
     base_url: str = "http://localhost:8000"
 
+    # --- Transactional email ---
+    # `console` prints to stdout instead of sending. It is the default on
+    # purpose: a fresh checkout must never be able to email a real person.
+    email_provider: EmailProvider = EmailProvider.CONSOLE
+    email_from: str = "no-reply@example.com"
+    email_from_name: str = ""
+
+    # Only read when email_provider is RESEND.
+    resend_api_key: str = ""
+
+    # Only read when email_provider is SMTP.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
     # --- Observability ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
@@ -56,6 +80,29 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """True in any deployed environment. Gates secure cookies and hides docs."""
         return self.environment is not Environment.LOCAL
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def email_from_header(self) -> str:
+        """The `From` value every provider sends: `Name <address>`, or bare address."""
+        if self.email_from_name:
+            return f"{self.email_from_name} <{self.email_from}>"
+        return self.email_from
+
+    @model_validator(mode="after")
+    def _check_email_provider_is_usable(self) -> Settings:
+        """Refuse to boot with an email provider that cannot send.
+
+        Deliberately at startup rather than at send time: the first email a
+        project sends is usually a password reset, and discovering there that
+        `RESEND_API_KEY` was never filled in means a user locked out of their
+        account. A misconfigured deploy should fail loudly and immediately.
+        """
+        if self.email_provider is EmailProvider.RESEND and not self.resend_api_key:
+            raise ValueError("EMAIL_PROVIDER=resend requires RESEND_API_KEY")
+        if self.email_provider is EmailProvider.SMTP and not self.smtp_host:
+            raise ValueError("EMAIL_PROVIDER=smtp requires SMTP_HOST")
+        return self
 
 
 @lru_cache(maxsize=1)

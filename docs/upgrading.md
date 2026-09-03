@@ -60,7 +60,8 @@ app/models/base.py          app/templating.py  app/db.py
 
 ```
 app/templates/base.html     app/static/css/input.css
-Makefile                    compose.yml         AGENTS.md
+app/templates/emails/       Makefile            compose.yml
+AGENTS.md
 ```
 
 **Nunca traer:**

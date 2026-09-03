@@ -27,3 +27,11 @@ class ConflictError(KiroError):
 
 class PermissionDeniedError(KiroError):
     """The current user may not perform this action."""
+
+
+class EmailDeliveryError(KiroError):
+    """An email could not be handed to the provider.
+
+    Raised by the adapters in `app/emails/providers/`. It means the message did
+    not leave — not that it bounced later, which no API reports synchronously.
+    """

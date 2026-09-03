@@ -26,6 +26,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.emails import MemoryEmailSender
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -99,7 +100,17 @@ def db_session(engine: Engine) -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def client(db_session: Session) -> Generator[TestClient, None, None]:
+def mailbox() -> MemoryEmailSender:
+    """Collects the emails a test causes to be sent.
+
+    The `client` fixture wires it in, so any test with an HTTP client can assert
+    on what was emailed — `mailbox.last.text` — without touching a network.
+    """
+    return MemoryEmailSender()
+
+
+@pytest.fixture
+def client(db_session: Session, mailbox: MemoryEmailSender) -> Generator[TestClient, None, None]:
     """HTTP client whose requests share the test's transaction.
 
     Overriding `get_db` is what lets a test set up data and then see it through
@@ -107,6 +118,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     find an empty database.
     """
     from app.db import get_db
+    from app.emails import get_email_sender
     from app.main import create_app
 
     app = create_app()
@@ -115,6 +127,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_email_sender] = lambda: mailbox
 
     with TestClient(app) as test_client:
         yield test_client

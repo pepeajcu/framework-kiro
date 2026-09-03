@@ -13,9 +13,16 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
+from app.emails import EmailSender, get_email_sender
 
 DbSession = Annotated[Session, Depends(get_db)]
 """Request-scoped database session."""
 
 AppSettings = Annotated[Settings, Depends(get_settings)]
 """Application configuration."""
+
+Emailer = Annotated[EmailSender, Depends(get_email_sender)]
+"""The configured transactional email sender.
+
+Injected rather than imported so a test can swap it for `MemoryEmailSender`
+through `app.dependency_overrides`."""
