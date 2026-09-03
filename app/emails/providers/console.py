@@ -16,10 +16,20 @@ class ConsoleEmailSender:
     """`EmailSender` that writes to standard output."""
 
     def send(self, message: EmailMessage) -> None:
-        """Print the message. Never fails, never sends."""
-        print(f"\n{_RULE}")
-        print(f"To:      {message.to}")
-        print(f"Subject: {message.subject}")
-        print(_RULE)
-        print(message.text)
-        print(f"{_RULE}\n")
+        """Print the message. Never fails, never sends.
+
+        `flush=True` is not cosmetic. Python block-buffers stdout when it is not
+        a terminal — which is exactly the case under `make dev > log`, under a
+        process manager, or in any container without PYTHONUNBUFFERED. Without
+        the flush, the reset link you are waiting for sits in a buffer, and the
+        default email provider appears to do nothing at all.
+        """
+        print(
+            f"\n{_RULE}\n"
+            f"To:      {message.to}\n"
+            f"Subject: {message.subject}\n"
+            f"{_RULE}\n"
+            f"{message.text}\n"
+            f"{_RULE}\n",
+            flush=True,
+        )

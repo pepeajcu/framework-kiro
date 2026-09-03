@@ -12,14 +12,20 @@ import datetime as dt
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from app.deps import OptionalUser
 from app.templating import render
 
 router = APIRouter(include_in_schema=False)
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request) -> HTMLResponse:
-    """Landing page."""
+def home(request: Request, user: OptionalUser) -> HTMLResponse:
+    """Landing page.
+
+    `user` is declared even though this handler does not use it: it is what
+    resolves the session cookie, and therefore what lets the header show who is
+    logged in. Every page handler should take it — see AGENTS.md.
+    """
     return render(request, "pages/home.html")
 
 

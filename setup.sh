@@ -64,6 +64,8 @@ PROJECT_DESCRIPTION=""
 PROJECT_DOMAIN=""
 AUTHOR=""
 EMAIL_PROVIDER=""
+ADMIN_EMAIL=""
+ADMIN_PASSWORD=""
 WITH_ANALYTICS=""
 GIT_MODE=""
 DB_PORT=""
@@ -274,6 +276,16 @@ generate_secret() {
   fi
 }
 
+# La contraseña del primer administrador. Más corta que un secreto de firma
+# porque alguien la va a teclear: 24 caracteres base64 siguen siendo ~140 bits.
+generate_password() {
+  if preflight::has openssl; then
+    openssl rand -base64 18 | tr -d '\n'
+  else
+    python3 -c 'import secrets; print(secrets.token_urlsafe(18))'
+  fi
+}
+
 write_env() {
   log::section "Generando .env con secretos nuevos"
 
@@ -284,6 +296,11 @@ write_env() {
   local secret_key db_password
   secret_key=$(generate_secret)
   db_password=$(generate_secret)
+
+  # Globales: final_message las enseña al terminar, porque nadie va a abrir el
+  # .env a buscar con qué entrar la primera vez.
+  ADMIN_EMAIL="admin@${PROJECT_DOMAIN:-example.com}"
+  ADMIN_PASSWORD=$(generate_password)
 
   cat > .env <<ENVEOF
 # Generado por ./setup.sh el $(date -Iseconds)
@@ -314,6 +331,25 @@ POSTGRES_PORT=$DB_PORT
 APP_PORT=$APP_PORT
 
 DATABASE_URL=postgresql+psycopg://$DB_USER:$db_password@localhost:$DB_PORT/$DB_NAME
+
+# --- Autenticación ---
+# Duración de la cookie de sesión.
+SESSION_LIFETIME_DAYS=14
+
+# Vida del enlace de recuperación de contraseña.
+PASSWORD_RESET_TTL_MINUTES=30
+
+# Longitud mínima. Es la única regla: las de composición ('una mayúscula, un
+# símbolo') llevan a 'Password1!' y ya no las recomienda el NIST.
+PASSWORD_MIN_LENGTH=12
+
+# false = /register no existe y las cuentas las crea un administrador.
+ALLOW_REGISTRATION=true
+
+# El primer administrador, creado por 'make seed'. Si la cuenta ya existe, el
+# seed NO le cambia la contraseña.
+ADMIN_EMAIL="$ADMIN_EMAIL"
+ADMIN_PASSWORD="$ADMIN_PASSWORD"
 
 # --- Correo transaccional ---
 # 'console' imprime los correos en stdout: es el valor seguro en local.
@@ -484,6 +520,11 @@ bootstrap() {
     log::section "Aplicando migraciones"
     uv run alembic upgrade head
     log::ok "esquema al día"
+
+    if [[ -f scripts/seed.py ]]; then
+      log::section "Creando el primer administrador"
+      uv run python -m scripts.seed
+    fi
   else
     log::info "aún no hay migraciones que aplicar"
   fi
@@ -519,6 +560,12 @@ final_message() {
   printf '    make dev            arrancar en http://localhost:%s\n' "$APP_PORT"
   printf '    make check          lint + tipos + tests\n'
   printf '    make help           ver todos los comandos\n\n'
+  if [[ $DO_BOOTSTRAP == true && -n $ADMIN_PASSWORD ]]; then
+    printf '  %sTu cuenta de administrador%s\n' "$C_BOLD" "$C_RESET"
+    printf '    %s / %s\n' "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+    printf '    Está también en .env. Cámbiala antes de desplegar.\n\n'
+  fi
+
   printf '  %sAntes de pedirle una feature a la IA%s\n' "$C_BOLD" "$C_RESET"
   printf '    Rellena %sPROJECT.md%s con las entidades y reglas de negocio.\n' "$C_BOLD" "$C_RESET"
   printf '    Es lo que el agente lee para no inventarse tu dominio.\n\n'

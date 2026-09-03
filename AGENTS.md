@@ -61,6 +61,7 @@ router → service → repository → model → Jinja template → HTML
 | `app/schemas/` | Pydantic input/output validation |
 | `app/templates/` | Jinja2. `pages/` full pages, `partials/` HTMX fragments |
 | `app/emails/` | Transactional email: one adapter per provider, plus rendering |
+| `app/security.py` | argon2 hashing, opaque tokens, session cookie flags |
 
 ## Hard rules
 
@@ -82,6 +83,9 @@ router → service → repository → model → Jinja template → HTML
    network I/O. FastAPI runs sync handlers in a threadpool. See ADR-0002.
 8. **snake_case** for files and functions, **PascalCase** for classes.
 9. Type everything. `mypy --strict` runs over `app/` and must pass.
+10. **Every page handler declares `user`** — `OptionalUser` on public pages,
+    `CurrentUser` on private ones. That dependency is what resolves the session
+    cookie; without it the header renders as if nobody were logged in.
 
 ## Golden path: adding a feature
 
@@ -97,6 +101,46 @@ examples. In short, in this order:
 7. Templates: full page in `pages/`, HTMX fragments in `partials/`
 8. Tests in `tests/`
 9. `make check`
+
+## Authentication
+
+Sessions are rows in `user_sessions`; the cookie carries a signed, opaque token
+and the table stores only its SHA-256. That is what makes a session revocable —
+a password change closes every one of them, which a self-contained token cannot
+do. Do not replace it with a JWT.
+
+```python
+from typing import Annotated
+from fastapi import Depends
+from app.deps import CurrentUser, OptionalUser, require_role
+from app.models.user import User
+
+AdminUser = Annotated[User, Depends(require_role("admin"))]
+
+@router.get("/")            # public — but the header knows who you are
+def home(request: Request, user: OptionalUser) -> HTMLResponse: ...
+
+@router.get("/panel")       # anonymous → 303 to /login?next=…
+def panel(request: Request, user: CurrentUser) -> HTMLResponse: ...
+
+@router.get("/admin")       # logged in without the role → 403 page
+def admin(request: Request, user: AdminUser) -> HTMLResponse: ...
+```
+
+Rules that are not obvious from the code:
+
+- **Never hash a password or mint a token by hand.** `app/security.py` owns
+  argon2id and the token helpers. One module means one place to audit.
+- **Never query `users` outside `UserRepository`.** It normalises the address;
+  skip it once and `Ana@x.com` becomes a second account nobody can log into.
+- **Never reveal whether an address has an account.** A wrong password, an
+  unknown address and a disabled account all produce the same message, and
+  `/forgot-password` renders the same page either way. This is a requirement,
+  not a nicety: the alternative is a form that enumerates your users.
+- **A form POST answers 303 on success** (post/redirect/get) and re-renders the
+  form with a 400 on failure. Never 200 on a rejected form.
+- **Changing a password revokes every session and every pending reset link.**
+  `AuthService.set_password` already does it; do not bypass it.
 
 ## Transactional email
 

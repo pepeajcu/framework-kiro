@@ -54,6 +54,7 @@ app/
 ├── deps.py            dependencias compartidas (DbSession, AppSettings)
 ├── exceptions.py      excepciones de dominio, sin acoplar a FastAPI
 ├── templating.py      Jinja2 configurado, helper render(), asset()
+├── security.py        hashing argon2, tokens opacos, cookie de sesión
 ├── models/            tablas SQLAlchemy — base.py trae los mixins
 ├── repositories/      acceso a datos — base.py trae el CRUD genérico
 ├── services/          lógica de negocio

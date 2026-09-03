@@ -75,10 +75,18 @@ def render(
 
     Thin wrapper over Starlette's `TemplateResponse` that keeps `request` out of
     every call site's context dict.
+
+    `user` is added automatically from `request.state`, where the
+    authentication dependencies leave it, so the header renders correctly
+    without every handler remembering to pass it. It is None on pages whose
+    handler does not declare `OptionalUser` or `CurrentUser`.
     """
+    merged = dict(context or {})
+    merged.setdefault("user", getattr(request.state, "user", None))
+
     return templates.TemplateResponse(
         request=request,
         name=template,
-        context=context or {},
+        context=merged,
         status_code=status_code,
     )

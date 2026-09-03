@@ -1,0 +1,33 @@
+{% extends "pages/auth/_layout.html" %}
+{% from "components/form.html.jinja" import field, form_error %}
+
+{% block title %}Crear cuenta — {{ settings.app_name }}{% endblock %}
+{% block description %}Crea tu cuenta en {{ settings.app_name }}.{% endblock %}
+
+{% block heading %}Crear cuenta{% endblock %}
+{% block subheading %}Solo hacen falta un email y una contraseña.{% endblock %}
+
+{% block form_content %}
+{# `errors` solo llega cuando la validación ha fallado. #}
+{% set errors = errors | default({}) %}
+<form method="post" action="/register" class="space-y-4">
+  {{ form_error(errors) }}
+
+  {{ field("full_name", "Nombre", value=full_name, errors=errors,
+           autocomplete="name", required=False, autofocus=True) }}
+  {{ field("email", "Email", type="email", value=email, errors=errors,
+           autocomplete="username") }}
+  {{ field("password", "Contraseña", type="password", errors=errors,
+           autocomplete="new-password",
+           help="Mínimo " ~ settings.password_min_length ~ " caracteres.") }}
+
+  <button class="btn w-full" data-variant="primary" type="submit">Crear cuenta</button>
+</form>
+{% endblock %}
+
+{% block footer_links %}
+<footer class="text-sm">
+  <a class="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+     href="/login">Ya tengo cuenta</a>
+</footer>
+{% endblock %}

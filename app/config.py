@@ -56,6 +56,23 @@ class Settings(BaseSettings):
     # where there is no incoming request to derive the host from.
     base_url: str = "http://localhost:8000"
 
+    # --- Authentication ---
+    # How long a session cookie stays valid. Two weeks is a compromise: long
+    # enough that people are not re-typing passwords weekly, short enough that a
+    # forgotten session on a shared machine expires on its own.
+    session_lifetime_days: int = 14
+    # Reset links are short-lived on purpose: the link sits in an inbox, which
+    # is the least trustworthy place a credential can wait.
+    password_reset_ttl_minutes: int = 30
+    password_min_length: int = 12
+    # Turn off for projects where accounts are created by an administrator —
+    # a catalogue, an internal panel — so /register 404s instead of existing.
+    allow_registration: bool = True
+    # Seeded by `make seed`. setup.sh generates a random password for local use;
+    # in production, set them, run the seed once, and remove them.
+    admin_email: str = ""
+    admin_password: str = ""
+
     # --- Transactional email ---
     # `console` prints to stdout instead of sending. It is the default on
     # purpose: a fresh checkout must never be able to email a real person.

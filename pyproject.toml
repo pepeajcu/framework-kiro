@@ -15,8 +15,13 @@ dependencies = [
     "alembic>=1.14",
     "psycopg[binary]>=3.2",       # driver sync moderno para PostgreSQL
     # --- Config y validación ---
-    "pydantic>=2.10",
+    "pydantic[email]>=2.10",      # el extra trae email-validator, para EmailStr
     "pydantic-settings>=2.7",
+    # --- Seguridad ---
+    # argon2id: ganador del Password Hashing Competition y lo que recomienda
+    # OWASP. Trae rueda compilada para las plataformas habituales, así que no
+    # obliga a instalar un compilador ni en el Dockerfile ni en CI.
+    "argon2-cffi>=23.1",
     # --- Utilidades ---
     "itsdangerous>=2.2",          # cookies de sesión y tokens firmados
     # httpx2 es la sucesora de httpx. La usan tanto nuestro código saliente

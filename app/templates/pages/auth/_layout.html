@@ -1,0 +1,27 @@
+{#
+  Layout de las páginas de autenticación: una tarjeta estrecha y centrada.
+
+  No es una página: las seis páginas de /login, /register y recuperación
+  heredan de aquí. Bloques a rellenar: heading, subheading, form_content y
+  footer_links.
+#}
+{% extends "base.html" %}
+
+{% block body_class %}bg-muted/40{% endblock %}
+
+{% block content %}
+<div class="mx-auto w-full max-w-sm py-8">
+  <article class="card">
+    <header>
+      <h1 class="text-xl font-semibold tracking-tight">{% block heading %}{% endblock %}</h1>
+      <p class="text-muted-foreground text-sm">{% block subheading %}{% endblock %}</p>
+    </header>
+
+    <section class="space-y-4">
+      {% block form_content %}{% endblock %}
+    </section>
+
+    {% block footer_links %}{% endblock %}
+  </article>
+</div>
+{% endblock %}

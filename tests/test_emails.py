@@ -16,7 +16,7 @@ from app.emails.providers.console import ConsoleEmailSender
 from app.emails.render import _render_subject
 from app.templating import templates
 
-RESET_URL = "https://example.test/reset-password/tok?next=/panel&ref=mail"
+RESET_URL = "https://example.com/reset-password/tok?next=/panel&ref=mail"
 
 VALID_SETTINGS = {
     "secret_key": "x" * 32,
@@ -27,7 +27,7 @@ VALID_SETTINGS = {
 def render_reset():
     return render_email(
         "password_reset",
-        to="alguien@example.test",
+        to="alguien@example.com",
         reset_url=RESET_URL,
         expires_in_minutes=30,
     )
@@ -76,7 +76,7 @@ def test_memory_sender_records_instead_of_sending():
     sender.send(render_reset())
 
     assert len(sender.outbox) == 1
-    assert sender.last.to == "alguien@example.test"
+    assert sender.last.to == "alguien@example.com"
 
     sender.clear()
     with pytest.raises(AssertionError, match="no email was sent"):
@@ -87,7 +87,7 @@ def test_console_sender_prints_the_text_body(capsys):
     ConsoleEmailSender().send(render_reset())
 
     printed = capsys.readouterr().out
-    assert "alguien@example.test" in printed
+    assert "alguien@example.com" in printed
     assert RESET_URL in printed
 
 
