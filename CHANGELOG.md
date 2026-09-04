@@ -37,12 +37,17 @@ tiene: **no hay nada que traer a un proyecto existente**.
   `UV_INSTALL_DIR`, se busca también en `XDG_BIN_HOME` y `~/.cargo/bin`, se
   adopta un uv ya instalado fuera del PATH, y si el instalador de uv falla se
   enseña su salida en vez de taparla.
-- `[SEGURO]` **Faltar Docker ya no aborta el instalador.** Docker solo hace falta
-  para levantar PostgreSQL: ahora se avisa, se ofrece terminar la configuración
-  sin base de datos, y el mensaje final dice qué quedó pendiente
-  (`make up && make migrate && make seed`). También se comprueba `curl` antes de
-  usarlo, y el diagnóstico de Docker distingue *no instalado*, *sin plugin
-  compose v2* y *daemon caído*, que son tres arreglos distintos.
+- `[SEGURO]` **Faltar Docker ya no aborta el instalador, pero tampoco se pasa de
+  largo.** El diagnóstico distingue *no instalado*, *sin plugin compose v2* y
+  *daemon caído* —tres arreglos distintos—, **recomienda el comando concreto**
+  para el caso detectado y explica qué se gana con él (PostgreSQL levantado,
+  esquema migrado, administrador sembrado, CSS compilado) frente a lo que
+  tocaría hacer a mano. Solo entonces ofrece seguir sin base de datos, y con el
+  **«no» por defecto**: si el instalador sabe cuál es la solución, ofrecer la
+  salida de emergencia sin recomendarla primero es elegir por quien instala sin
+  decírselo. También se comprueba `curl` antes de usarlo.
+- `[SEGURO]` El mensaje final pone lo pendiente **antes** de `make dev`, que es
+  lo primero que se lee y lo primero que falla sin base de datos.
 
 ### Añadido
 

@@ -27,6 +27,13 @@ preflight::require_python() {
   log::ok "$(python3 -V 2>&1)"
 }
 
+# Diagnóstico del último preflight::check_docker fallido. Se expone en vez de
+# imprimirse y ya está porque el arreglo es distinto en cada caso, y quien llama
+# necesita poder recomendarlo: un instalador que sabe cuál es la solución y no
+# la dice está eligiendo por el usuario sin contárselo.
+PREFLIGHT_DOCKER_PROBLEM=""
+PREFLIGHT_DOCKER_FIX=()
+
 # Docker instalado, con el plugin compose v2, y con el daemon respondiendo.
 # Son tres fallos distintos con tres soluciones distintas, así que se separan.
 #
@@ -34,22 +41,42 @@ preflight::require_python() {
 # PostgreSQL, y el instalador puede terminar su trabajo sin él. Quien llama
 # decide si eso es fatal.
 preflight::check_docker() {
+  PREFLIGHT_DOCKER_PROBLEM=""
+  PREFLIGHT_DOCKER_FIX=()
+
   if ! preflight::has docker; then
-    log::warn "no se encontró 'docker'"
-    log::hint "instálalo desde https://docs.docker.com/get-docker/"
+    PREFLIGHT_DOCKER_PROBLEM="Docker no está instalado"
+    PREFLIGHT_DOCKER_FIX=(
+      "sigue las instrucciones de https://docs.docker.com/engine/install/"
+      "(en Ubuntu y Debian, el paquete de la distribución también sirve:"
+      " sudo apt install docker.io docker-compose-v2)"
+    )
+    log::warn "$PREFLIGHT_DOCKER_PROBLEM"
     return 1
   fi
 
   if ! docker compose version >/dev/null 2>&1; then
-    log::warn "'docker compose' no está disponible (¿plugin v2 sin instalar?)"
-    log::hint "instala el plugin docker-compose-v2 de tu distribución"
+    PREFLIGHT_DOCKER_PROBLEM="falta el plugin 'docker compose' v2"
+    PREFLIGHT_DOCKER_FIX=(
+      "sudo apt install docker-compose-v2   # o el equivalente de tu distribución"
+    )
+    log::warn "$PREFLIGHT_DOCKER_PROBLEM"
     return 1
   fi
 
   if ! docker info >/dev/null 2>&1; then
-    log::warn "el daemon de Docker no responde"
-    log::hint "arráncalo con 'sudo systemctl start docker'"
-    log::hint "si es un problema de permisos: sudo usermod -aG docker \$USER && newgrp docker"
+    PREFLIGHT_DOCKER_PROBLEM="el daemon de Docker no responde"
+    # Dos causas con el mismo síntoma, y distinguirlas requiere leer el error
+    # de docker info, así que se dan las dos en el orden más probable.
+    PREFLIGHT_DOCKER_FIX=(
+      "sudo systemctl enable --now docker"
+      ""
+      "si el servicio ya estaba corriendo, es que tu usuario no puede hablar"
+      "con el socket. Añádelo al grupo (y vuelve a entrar en la sesión):"
+      ""
+      "sudo usermod -aG docker $USER && newgrp docker"
+    )
+    log::warn "$PREFLIGHT_DOCKER_PROBLEM"
     return 1
   fi
 
@@ -57,9 +84,26 @@ preflight::check_docker() {
   return 0
 }
 
+# Imprime, indentado, el arreglo del último check_docker fallido.
+preflight::docker_fix() {
+  local line
+  for line in "${PREFLIGHT_DOCKER_FIX[@]}"; do
+    # Las líneas vacías separan párrafos: indentarlas deja espacios sueltos.
+    if [[ -z $line ]]; then
+      printf '\n' >&2
+    else
+      printf '    %s\n' "$line" >&2
+    fi
+  done
+}
+
 preflight::require_docker() {
-  preflight::check_docker || log::die "Docker no está listo" \
-    "arréglalo con la pista de arriba, o corre './setup.sh --no-bootstrap' para configurar el proyecto sin levantar la base de datos"
+  preflight::check_docker && return 0
+  printf '\n' >&2
+  preflight::docker_fix
+  printf '\n' >&2
+  log::die "$PREFLIGHT_DOCKER_PROBLEM" \
+    "arréglalo, o corre './setup.sh --no-bootstrap' para configurar el proyecto sin levantar la base de datos"
 }
 
 # Directorios donde el instalador de uv puede haber dejado el binario, en el
