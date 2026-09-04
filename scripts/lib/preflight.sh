@@ -27,22 +27,76 @@ preflight::require_python() {
   log::ok "$(python3 -V 2>&1)"
 }
 
-# Docker debe estar instalado Y con el daemon corriendo. Son dos fallos
-# distintos con dos soluciones distintas.
-preflight::require_docker() {
-  preflight::has docker || log::die "no se encontró 'docker'" \
-    "instálalo desde https://docs.docker.com/get-docker/"
+# Docker instalado, con el plugin compose v2, y con el daemon respondiendo.
+# Son tres fallos distintos con tres soluciones distintas, así que se separan.
+#
+# Avisa y devuelve 1 en vez de abortar: Docker solo hace falta para levantar
+# PostgreSQL, y el instalador puede terminar su trabajo sin él. Quien llama
+# decide si eso es fatal.
+preflight::check_docker() {
+  if ! preflight::has docker; then
+    log::warn "no se encontró 'docker'"
+    log::hint "instálalo desde https://docs.docker.com/get-docker/"
+    return 1
+  fi
 
   if ! docker compose version >/dev/null 2>&1; then
-    log::die "'docker compose' no está disponible (¿plugin v2 sin instalar?)" \
-      "instala el plugin docker-compose-v2 de tu distribución"
+    log::warn "'docker compose' no está disponible (¿plugin v2 sin instalar?)"
+    log::hint "instala el plugin docker-compose-v2 de tu distribución"
+    return 1
   fi
 
   if ! docker info >/dev/null 2>&1; then
-    log::die "el daemon de Docker no responde" \
-      "arráncalo con 'sudo systemctl start docker', o añade tu usuario al grupo 'docker'"
+    log::warn "el daemon de Docker no responde"
+    log::hint "arráncalo con 'sudo systemctl start docker'"
+    log::hint "si es un problema de permisos: sudo usermod -aG docker \$USER && newgrp docker"
+    return 1
   fi
+
   log::ok "docker $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo '')"
+  return 0
+}
+
+preflight::require_docker() {
+  preflight::check_docker || log::die "Docker no está listo" \
+    "arréglalo con la pista de arriba, o corre './setup.sh --no-bootstrap' para configurar el proyecto sin levantar la base de datos"
+}
+
+# Directorios donde el instalador de uv puede haber dejado el binario, en el
+# mismo orden de preferencia que usa él. No basta con ~/.local/bin: las
+# variables XDG y una instalación vieja por cargo lo mueven a otro sitio.
+preflight::uv_dirs() {
+  printf '%s\n' \
+    "${UV_INSTALL_DIR:-}" \
+    "${XDG_BIN_HOME:-}" \
+    "$HOME/.local/bin" \
+    "${CARGO_HOME:-$HOME/.cargo}/bin"
+}
+
+# Encuentra un uv ya instalado que no esté en el PATH y lo añade al de esta
+# sesión. Devuelve 0 si lo consiguió.
+#
+# Existe por un fallo real: en Debian y Ubuntu, ~/.profile añade ~/.local/bin
+# al PATH solo si ese directorio YA existía al iniciar sesión. En una máquina
+# recién instalada no existe, así que uv se instala ahí y sigue invisible hasta
+# el siguiente login. El instalador lo descargaba, no lo encontraba, y moría;
+# volver a correrlo repetía el ciclo entero.
+preflight::adopt_uv() {
+  local dir
+  while IFS= read -r dir; do
+    [[ -n $dir && -x "$dir/uv" ]] || continue
+    export PATH="$dir:$PATH"
+    hash -r 2>/dev/null || true
+    return 0
+  done < <(preflight::uv_dirs)
+  return 1
+}
+
+# uv está en el PATH de ESTE proceso, no en el de la terminal de quien llama.
+preflight::hint_uv_path() {
+  local dir=$1
+  log::hint "si 'uv' no aparece en una terminal nueva, añade a tu ~/.bashrc:"
+  log::hint "  export PATH=\"$dir:\$PATH\""
 }
 
 # uv gestiona dependencias y la versión de Python. Si falta, se ofrece instalarlo:
@@ -55,22 +109,50 @@ preflight::ensure_uv() {
     return 0
   fi
 
+  if preflight::adopt_uv; then
+    log::ok "uv $(uv --version 2>/dev/null | awk '{print $2}') (estaba instalado fuera del PATH)"
+    preflight::hint_uv_path "$(dirname "$(command -v uv)")"
+    return 0
+  fi
+
   log::warn "uv no está instalado (es el gestor de paquetes de Python que usa Kiro)"
   if [[ $auto_yes != true ]]; then
     prompt::yes_no "¿Instalar uv ahora?" "y" || log::die "uv es obligatorio para continuar" \
       "instálalo a mano: curl -LsSf https://astral.sh/uv/install.sh | sh"
   fi
 
-  log::info "instalando uv…"
-  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1 \
-    || log::die "falló la instalación de uv" "instálalo a mano desde https://docs.astral.sh/uv/"
+  # curl no se comprueba en el preflight general porque solo hace falta aquí,
+  # pero una imagen mínima de Debian no lo trae y sin él el mensaje de error
+  # sería "falló la instalación de uv", que no señala la causa.
+  preflight::has curl || log::die "hace falta 'curl' para descargar el instalador de uv" \
+    "instálalo (sudo apt install curl) y vuelve a correr ./setup.sh"
 
-  # El instalador de uv lo deja en ~/.local/bin, que puede no estar en el PATH
-  # de esta sesión todavía.
-  export PATH="$HOME/.local/bin:$PATH"
-  preflight::has uv || log::die "uv se instaló pero no está en el PATH" \
-    "añade \$HOME/.local/bin a tu PATH y vuelve a correr ./setup.sh"
-  log::ok "uv instalado"
+  # Se fija el destino en vez de dejar que lo elija el instalador: si elige una
+  # ruta que después no miramos, el setup muere sin decir dónde quedó el binario.
+  local install_dir="${UV_INSTALL_DIR:-$HOME/.local/bin}"
+  local out
+  out=$(mktemp)
+
+  log::info "instalando uv en $install_dir…"
+  if ! curl -LsSf https://astral.sh/uv/install.sh \
+      | env UV_INSTALL_DIR="$install_dir" sh >"$out" 2>&1; then
+    # La salida del instalador es lo único que explica POR QUÉ falló. Taparla
+    # deja un "falló la instalación" que no se puede depurar.
+    sed -e 's/^/      /' "$out" >&2
+    rm -f "$out"
+    log::die "falló la instalación de uv" "instálalo a mano desde https://docs.astral.sh/uv/"
+  fi
+  rm -f "$out"
+
+  export PATH="$install_dir:$PATH"
+  hash -r 2>/dev/null || true
+
+  preflight::has uv || preflight::adopt_uv || log::die \
+    "uv se instaló pero no aparece en $install_dir" \
+    "instálalo a mano desde https://docs.astral.sh/uv/ y vuelve a correr ./setup.sh"
+
+  log::ok "uv instalado en $install_dir"
+  preflight::hint_uv_path "$install_dir"
 }
 
 # preflight::port_free PUERTO — ¿está libre para escuchar?

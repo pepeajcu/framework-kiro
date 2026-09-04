@@ -13,6 +13,22 @@ cd mi-proyecto
 ./setup.sh
 ```
 
+### Qué necesita la máquina
+
+| | |
+|---|---|
+| **git** y **Python 3.12+** | obligatorios; el instalador se detiene sin ellos |
+| **curl** | solo si hay que descargar uv |
+| **uv** | si falta, el instalador se ofrece a instalarlo |
+| **Docker** con el plugin `compose` v2 | opcional: sin él el proyecto se configura igual, pero la base de datos la levantas después con `make up` |
+
+Ejecútalo **desde una terminal**, no con doble clic: si algo falla, el mensaje
+que lo explica va a la terminal. Para dejar constancia de lo que pasó:
+
+```bash
+./setup.sh 2>&1 | tee setup.log
+```
+
 ---
 
 ## Por qué existe

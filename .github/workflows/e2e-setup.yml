@@ -24,6 +24,72 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           shellcheck -x setup.sh scripts/lib/*.sh
 
+  entornos-hostiles:
+    runs-on: ubuntu-latest
+    name: El instalador sobrevive a una máquina pobre
+    # Los fallos de este job no aparecen en la máquina de quien desarrolla el
+    # framework, que tiene todo instalado: aparecen en el portátil recién
+    # formateado de quien clona el repositorio por primera vez.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Un locale sin UTF-8 no rompe el slug
+        # `sed y/áé…/ae…/` cuenta BYTES fuera de UTF-8, así que los dos
+        # conjuntos dejaban de medir lo mismo y sed abortaba. El slug salía
+        # vacío y la pregunta se repetía sin un default válido.
+        run: |
+          out=$(LC_ALL=C LANG=C bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            prompt::slugify "Peluquería Ñandú & Co."')
+          test "$out" = "peluqueria-nandu-co" || { echo "slug inesperado: '$out'"; exit 1; }
+
+      - name: Sin stdin y con un default inválido, aborta en vez de colgarse
+        run: |
+          set +e
+          timeout 30 bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            prompt::ask "Identificador" "" validate::slug' </dev/null >/dev/null 2>&1
+          status=$?
+          set -e
+          # 124 es el timeout: significa que volvió el bucle infinito.
+          test "$status" -eq 1 || { echo "esperaba salida 1, hubo $status"; exit 1; }
+
+      - name: uv instalado fuera del PATH se encuentra igual
+        # En Debian y Ubuntu ~/.profile añade ~/.local/bin solo si ya existía al
+        # iniciar sesión: tras instalar uv, sigue invisible hasta el siguiente
+        # login. El instalador lo descargaba, no lo veía, y moría.
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$(command -v uv)" "$HOME/.local/bin/uv"
+          out=$(env PATH=/usr/bin:/bin bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            source scripts/lib/preflight.sh
+            preflight::ensure_uv true' 2>&1)
+          echo "$out"
+          echo "$out" | grep -q "fuera del PATH"
+
+      - name: Sin Docker termina el trabajo que sí puede hacer
+        # Docker solo hace falta para levantar PostgreSQL. Antes su ausencia
+        # abortaba el instalador entero y dejaba al usuario sin proyecto.
+        run: |
+          mkdir -p /tmp/nodocker
+          printf '#!/bin/sh\nexit 1\n' > /tmp/nodocker/docker
+          chmod +x /tmp/nodocker/docker
+          rm -rf /tmp/sin-docker && cp -a . /tmp/sin-docker && cd /tmp/sin-docker
+          # Interactivo con stdin cerrado: toda pregunta toma su valor por
+          # defecto, incluida la de continuar sin base de datos.
+          PATH=/tmp/nodocker:$PATH timeout 600 ./setup.sh \
+            --git-mode keep --keep-framework-files </dev/null | tee /tmp/salida.txt
+          test -f .env
+          grep -q 'name = "mi-proyecto"' pyproject.toml
+          # Y el mensaje final tiene que decir qué quedó pendiente.
+          grep -q "Falta la base de datos" /tmp/salida.txt
+          grep -q "make up && make migrate && make seed" /tmp/salida.txt
+
   generate-and-check:
     runs-on: ubuntu-latest
     strategy:
@@ -141,6 +207,15 @@ jobs:
       - name: Correr setup.sh dos veces aborta sin destruir nada
         run: |
           cd /tmp/generated
+          # setup.sh se borró a sí mismo al limpiar los archivos del framework.
+          # Sin reponerlo, esto medía un 127 de "command not found": el paso
+          # pasaba en verde sin llegar a ejecutar la guarda del marcador.
+          cp "$GITHUB_WORKSPACE/setup.sh" setup.sh
+          cp -r "$GITHUB_WORKSPACE/scripts/lib" scripts/lib
           cp .env /tmp/env-antes
-          ! ./setup.sh --non-interactive --name "Otro" --no-bootstrap --git-mode keep
+          set +e
+          ./setup.sh --non-interactive --name "Otro" --no-bootstrap --git-mode keep
+          status=$?
+          set -e
+          test "$status" -eq 1 || { echo "esperaba salida 1, hubo $status"; exit 1; }
           diff -q .env /tmp/env-antes

@@ -35,16 +35,25 @@ MUTATED=false
 on_failure() {
   local code=$?
   [[ $code -eq 0 ]] && return 0
-  [[ $MUTATED != true ]] && return 0
 
-  printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
-  printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
-  printf '    rm -f .env .kiro-setup-done\n' >&2
-  printf '    git checkout -- .        %s# descarta los archivos ya personalizados%s\n' \
-    "$C_DIM" "$C_RESET" >&2
-  printf '    ./setup.sh\n\n' >&2
-  printf '  %sSi ya no tienes el historial de git, lo más rápido es borrar la\n' "$C_DIM" >&2
-  printf '  carpeta y volver a clonar.%s\n\n' "$C_RESET" >&2
+  if [[ $MUTATED == true ]]; then
+    printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
+    printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
+    printf '    rm -f .env .kiro-setup-done\n' >&2
+    printf '    git checkout -- .        %s# descarta los archivos ya personalizados%s\n' \
+      "$C_DIM" "$C_RESET" >&2
+    printf '    ./setup.sh\n\n' >&2
+    printf '  %sSi ya no tienes el historial de git, lo más rápido es borrar la\n' "$C_DIM" >&2
+    printf '  carpeta y volver a clonar.%s\n\n' "$C_RESET" >&2
+  fi
+
+  # Lanzado con doble clic desde el explorador de archivos, la ventana se cierra
+  # en cuanto el script termina y el error no llega a leerse: el síntoma que
+  # recibes es "se cierra solo", sin ninguna pista de la causa.
+  if [[ -t 0 && ${NON_INTERACTIVE:-false} != true ]]; then
+    printf '  %sPulsa Enter para cerrar.%s ' "$C_DIM" "$C_RESET" >&2
+    read -r _ || true
+  fi
 }
 trap on_failure EXIT
 
@@ -73,6 +82,9 @@ APP_PORT=""
 
 NON_INTERACTIVE=false
 DO_BOOTSTRAP=true
+# Por qué se saltó el bootstrap, para que el mensaje diga la verdad: la flag no
+# es el único motivo desde que faltar Docker dejó de ser fatal.
+BOOTSTRAP_SKIP_REASON="--no-bootstrap"
 KEEP_FRAMEWORK_FILES=false
 FORCE=false
 
@@ -168,11 +180,30 @@ run_preflight() {
   preflight::require_cmd git "instálalo con el gestor de paquetes de tu sistema"
   preflight::require_python
   preflight::ensure_uv "$NON_INTERACTIVE"
-  if [[ $DO_BOOTSTRAP == true ]]; then
-    preflight::require_docker
-  else
-    log::info "docker omitido (--no-bootstrap)"
+
+  if [[ $DO_BOOTSTRAP != true ]]; then
+    log::info "docker omitido ($BOOTSTRAP_SKIP_REASON)"
+    return 0
   fi
+
+  if preflight::check_docker; then
+    return 0
+  fi
+
+  # Docker solo hace falta para levantar PostgreSQL. Antes esto abortaba el
+  # instalador entero y dejaba al usuario sin proyecto por algo que se arregla
+  # después: ahora se ofrece terminar la configuración sin base de datos.
+  if [[ $NON_INTERACTIVE == true ]]; then
+    log::die "Docker no está listo" \
+      "arréglalo con la pista de arriba, o añade --no-bootstrap para configurar el proyecto sin levantar la base de datos"
+  fi
+  if ! prompt::yes_no "¿Continuar sin levantar la base de datos?" "y"; then
+    log::die "Docker no está listo" "arréglalo y vuelve a correr ./setup.sh"
+  fi
+  DO_BOOTSTRAP=false
+  BOOTSTRAP_SKIP_REASON="Docker no disponible"
+  log::info "se configurará el proyecto sin base de datos"
+  log::hint "cuando Docker funcione: make up && make migrate && make seed"
 }
 
 gather_answers() {
@@ -505,7 +536,7 @@ setup_git() {
 
 bootstrap() {
   [[ $DO_BOOTSTRAP == true ]] || {
-    log::info "bootstrap omitido (--no-bootstrap)"
+    log::info "bootstrap omitido ($BOOTSTRAP_SKIP_REASON)"
     return 0
   }
 
@@ -571,6 +602,11 @@ final_message() {
     printf '  %sTu cuenta de administrador%s\n' "$C_BOLD" "$C_RESET"
     printf '    %s / %s\n' "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
     printf '    Está también en .env. Cámbiala antes de desplegar.\n\n'
+  else
+    printf '  %sFalta la base de datos%s (%s)\n' "$C_BOLD" "$C_RESET" "$BOOTSTRAP_SKIP_REASON"
+    printf '    make up && make migrate && make seed\n'
+    printf '    %sTu contraseña de administrador está en .env (ADMIN_PASSWORD).%s\n\n' \
+      "$C_DIM" "$C_RESET"
   fi
 
   printf '  %sAntes de pedirle una feature a la IA%s\n' "$C_BOLD" "$C_RESET"
