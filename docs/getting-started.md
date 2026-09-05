@@ -64,15 +64,16 @@ uv run pre-commit install
 
 ## Antes de pedirle la primera feature a la IA
 
-**Rellena `PROJECT.md`.** Está lleno de TODOs a propósito. Describe tus
-entidades, tus reglas de negocio y las decisiones ya tomadas. Es lo que el
-agente lee para no inventarse tu dominio, y se escribe una sola vez.
+Abre Claude Code u OpenCode en el proyecto y corre `/kiro-init`. Te entrevista
+para rellenar `PROJECT.md` (entidades, reglas de negocio, decisiones ya
+tomadas — es lo que el agente lee para no inventarse tu dominio) y te explica
+las dos formas de pedir una feature a partir de ahí:
 
-Luego basta con pedir la feature. El agente encontrará `AGENTS.md` con las
-reglas del stack y la skill `kiro-feature` con el camino a seguir.
-
-Para una feature grande, usa el flujo de especificación:
-`/spec-new` → `/spec-design` → `/spec-tasks` → `/spec-build`.
+- **Golden path directo** — para un cambio normal: lo pides tal cual y el
+  agente sigue solo las 8 capas del golden path (`kiro-feature`).
+- **Desarrollo acompañado** — para una feature grande o con requisitos
+  ambiguos: `/spec-new` → `/spec-design` → `/spec-tasks` → `/spec-build`, cada
+  uno esperando tu aprobación antes de seguir al siguiente.
 
 ## Problemas frecuentes
 

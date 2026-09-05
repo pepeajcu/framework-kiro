@@ -649,9 +649,12 @@ final_message() {
     printf '    todavía: la crea "make seed".%s\n\n' "$C_RESET"
   fi
 
-  printf '  %sAntes de pedirle una feature a la IA%s\n' "$C_BOLD" "$C_RESET"
-  printf '    Rellena %sPROJECT.md%s con las entidades y reglas de negocio.\n' "$C_BOLD" "$C_RESET"
-  printf '    Es lo que el agente lee para no inventarse tu dominio.\n\n'
+  printf '  %sSiguiente paso%s\n' "$C_BOLD" "$C_RESET"
+  printf '    Abre Claude Code u OpenCode en esta carpeta y corre:\n'
+  printf '      %s/kiro-init%s\n' "$C_BOLD" "$C_RESET"
+  printf '    Te entrevista para llenar %sPROJECT.md%s y te explica cómo pedir\n' "$C_BOLD" "$C_RESET"
+  printf '    features a partir de ahí — es lo que el agente lee para no\n'
+  printf '    inventarse tu dominio.\n\n'
 }
 
 main() {
