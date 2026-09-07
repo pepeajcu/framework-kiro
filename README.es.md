@@ -1,0 +1,140 @@
+🇬🇧 [Read in English](README.md)
+
+# Kiro
+
+**Un framework para arrancar proyectos web con IA sin gastar la primera hora
+explicándole la arquitectura.**
+
+Clonas, corres `./setup.sh`, y tienes una aplicación funcionando con Postgres,
+componentes, Docker y —lo importante— un archivo de instrucciones que le dice al
+agente cuál es el stack, cómo se organiza el código y qué no debe tocar.
+
+```bash
+git clone https://github.com/pepeajcu/framework-kiro.git mi-proyecto
+cd mi-proyecto
+./setup.sh
+```
+
+### Qué necesita la máquina
+
+| | |
+|---|---|
+| **git** y **Python 3.12+** | obligatorios; el instalador se detiene sin ellos |
+| **curl** | solo si hay que descargar uv |
+| **uv** | si falta, el instalador se ofrece a instalarlo |
+| **Docker** con el plugin `compose` v2 | opcional: sin él el proyecto se configura igual, pero la base de datos la levantas después con `make up` |
+
+Ejecútalo **desde una terminal**, no con doble clic: si algo falla, el mensaje
+que lo explica va a la terminal. Para dejar constancia de lo que pasó:
+
+```bash
+./setup.sh 2>&1 | tee setup.log
+```
+
+---
+
+## Por qué existe
+
+Cada sesión nueva con una IA empieza igual: reconstruir la arquitectura,
+configurar Docker, decidir dónde van las queries, explicar las convenciones. Ese
+tramo inicial es además donde más alucina el modelo, porque está inventando
+decisiones en vez de seguirlas.
+
+Kiro llega con esas decisiones ya tomadas y escritas donde el agente las lee:
+
+- **`AGENTS.md`** — el stack, las capas, las reglas duras y lo que está
+  prohibido. Formato abierto: lo leen Claude Code, OpenCode, Codex y Cursor.
+- **`PROJECT.md`** — tu dominio de negocio. Lo rellenas una vez y deja de
+  inventarse tus entidades.
+- **`.claude/skills/`** — el camino exacto para añadir una feature, con código
+  real del propio repositorio.
+
+## El stack
+
+| Capa | Elección |
+|---|---|
+| Lenguaje | Python 3.12+ con tipado obligatorio (`mypy --strict`) |
+| Web | FastAPI, renderizado en servidor de principio a fin |
+| Base de datos | PostgreSQL · SQLAlchemy 2.0 **síncrono** · Alembic |
+| Frontend | Jinja2 + HTMX + [Basecoat](https://basecoatui.com) (shadcn/ui en HTML) |
+| CSS | Tailwind v4 vía CLI standalone — **cero Node.js** |
+| Contenedores | Docker multi-etapa, sin privilegios, listo para Coolify/Dokploy |
+
+Cada elección está justificada en [`docs/decisions/`](docs/decisions/). Varias
+contradicen lo que un modelo asumiría por defecto, y esa es justamente la razón
+de escribirlas:
+
+- **SQLAlchemy síncrono, no async** — es donde más alucina la IA en este stack, y
+  con SSR el cuello de botella no es la concurrencia
+  ([ADR-0002](docs/decisions/0002-sqlalchemy-sincrono.md)).
+- **Sin Node.js** — un solo toolchain, un solo gestor de paquetes
+  ([ADR-0005](docs/decisions/0005-sin-nodejs.md)).
+- **Sin Alpine.js** — HTMX y el JS de Basecoat ya lo cubren; un tercer paradigma
+  solo añade confusión ([ADR-0007](docs/decisions/0007-sin-alpinejs.md)).
+- **Sesiones en base de datos, no JWT** — un token autocontenido no se puede
+  revocar, así que cambiar la contraseña no echa a quien te la robó
+  ([ADR-0008](docs/decisions/0008-sesiones-en-base-de-datos.md)).
+
+## Qué trae hecho
+
+- Instalador interactivo que genera secretos, **detecta puertos libres** y deja
+  la base de datos migrada, sembrada y corriendo — con tu cuenta de
+  administrador ya creada.
+- **Autenticación completa**: registro, login con argon2id, sesiones revocables,
+  roles y recuperación de contraseña por correo. Ningún formulario revela si un
+  email tiene cuenta.
+- **Correo transaccional** con tres proveedores intercambiables (consola, Resend,
+  SMTP) y plantillas que editas sin tocar código.
+- **Analítica server-side y SEO**: GTM condicionado a consentimiento, GA4
+  Measurement Protocol y Meta Conversions API desde el servidor, sitemap.xml
+  dinámico y robots.txt, verificación de Search Console.
+- **Endurecido de serie**: CSRF en todas las rutas, límites de intentos
+  respaldados por PostgreSQL, cabeceras de seguridad y un identificador por
+  petición en cada línea de log.
+- SSR completo con SEO de serie: canonical, Open Graph, páginas 404/500 propias.
+- Capa de repositorios tipada que hace cumplible la regla "ninguna query fuera
+  de `repositories/`".
+- Alembic con convención de nombres de constraints, para que las migraciones
+  autogeneradas sean revisables.
+- Suite de tests con base de datos aislada y rollback por test.
+- `make check`: lint + tipos + tests + detección de migraciones pendientes.
+- `make audit`: dependencias contra la base de datos de vulnerabilidades
+  conocidas (`pip-audit`).
+- Un ejemplo real y completo del golden path (`app/routers/notes.py` y sus
+  capas) — para leer antes de pedirle la primera feature propia a una IA.
+- CI que **genera un proyecto desde cero y corre su suite** — lo único que
+  impide que el instalador se pudra en silencio.
+
+## Estado
+
+Publicado. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
+[roadmap](docs/framework/roadmap.md).
+
+| Versión | Contenido | Estado |
+|---|---|---|
+| v0.1.0 | Esqueleto: Docker, SSR, componentes, capa IA, CI | Publicada |
+| v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Publicada |
+| v0.3.0 | Analítica server-side y SEO | Publicada |
+| v1.0.0 | Documentación, ejemplo completo, release público | Publicada |
+
+## Documentación
+
+- [Primeros pasos](docs/getting-started.md)
+- [Arquitectura](docs/architecture.md)
+- [Desplegar en Coolify](docs/deploy-coolify.md)
+- [Actualizar un proyecto existente](docs/upgrading.md)
+- [Dependencias vendorizadas](docs/vendor.md)
+- [Decisiones de arquitectura](docs/decisions/)
+
+## Nota sobre el nombre
+
+"Kiro" es también el IDE agéntico de AWS, en el mismo nicho. La colisión está
+reconocida en [ADR-0006](docs/decisions/0006-nombre-kiro.md): la decisión,
+confirmada para esta versión, es conservar el nombre — es un framework de uso
+interno y de agencia, no un producto que compita por posicionamiento con el
+IDE de AWS. El nombre sigue contenido en un punto único del código si algún
+día hiciera falta cambiarlo.
+
+## Licencia
+
+MIT — ver [`LICENSE`](LICENSE).

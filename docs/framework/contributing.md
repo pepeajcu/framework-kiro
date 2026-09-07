@@ -57,9 +57,10 @@ visualmente antes de commitear: son cambios que los tests no detectan.
 ## Antes de publicar una versión
 
 1. `make check` en verde
-2. E2E local con las tres combinaciones de `--email-provider`
-3. `docker build --target production .`
-4. Entrada en `CHANGELOG.md` **con su etiqueta** `[SEGURO]` / `[MIGRACIÓN]` /
+2. `make audit` sin hallazgos sin triar
+3. E2E local con las tres combinaciones de `--email-provider`
+4. `docker build --target production .`
+5. Entrada en `CHANGELOG.md` **con su etiqueta** `[SEGURO]` / `[MIGRACIÓN]` /
    `[RUPTURA]` — es lo que hace viable la ruta de actualización de los proyectos
    existentes
-5. Tag
+6. Tag

@@ -1,0 +1,58 @@
+{#
+  Página de notas — parte del ejemplo trabajado del golden path. Ver el
+  docstring de app/routers/notes.py para la lista completa de archivos si
+  decides borrar el ejemplo entero.
+
+  Dos patrones en una sola página: el formulario de creación es POST/redirect/
+  GET normal, sin HTMX; el botón de borrar de cada nota sí es HTMX puro
+  (hx-delete + hx-swap="outerHTML" sobre el propio <article>).
+#}
+{% extends "base.html" %}
+{% from "components/form.html.jinja" import field, form_error %}
+
+{% block title %}Notas — {{ settings.app_name }}{% endblock %}
+{% block description %}Tus notas privadas.{% endblock %}
+
+{% block content %}
+{% set errors = errors | default({}) %}
+
+<h1 class="text-3xl font-semibold tracking-tight">Notas</h1>
+<p class="text-muted-foreground mt-1">Solo tú puedes verlas y borrarlas.</p>
+
+<form method="post" action="/notes" class="mt-6 max-w-lg space-y-4">
+  {% include "components/csrf_field.html" %}
+  {{ form_error(errors) }}
+
+  {{ field("title", "Título", value=title, errors=errors, autofocus=True) }}
+  {{ field("body", "Contenido", value=body, errors=errors) }}
+
+  <button class="btn" data-variant="primary" type="submit">Guardar</button>
+</form>
+
+<div id="notes-list" class="mt-10 space-y-3">
+  {% for note in notes %}
+    <article class="card" data-note-id="{{ note.id }}">
+      <header class="flex items-start justify-between gap-4">
+        <h2>{{ note.title }}</h2>
+        {# hx-delete es la mitad HTMX del ejemplo: pide DELETE /notes/{id} y
+           sustituye este <article> por la respuesta vacía, que lo elimina. #}
+        <button
+          class="btn"
+          data-variant="ghost"
+          data-size="sm"
+          hx-delete="/notes/{{ note.id }}"
+          hx-target="closest article"
+          hx-swap="outerHTML"
+        >
+          Eliminar
+        </button>
+      </header>
+      <section>
+        <p class="text-muted-foreground text-sm whitespace-pre-wrap">{{ note.body }}</p>
+      </section>
+    </article>
+  {% else %}
+    <p class="text-muted-foreground">Aún no tienes notas.</p>
+  {% endfor %}
+</div>
+{% endblock %}

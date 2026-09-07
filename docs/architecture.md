@@ -63,6 +63,8 @@ app/
 ├── routers/           entrada HTTP
 ├── schemas/           validación Pydantic
 ├── emails/            correo transaccional — un adaptador por proveedor
+├── analytics/         GA4 y Meta server-side — mismo patrón que emails/
+├── seo/               registro de proveedores del sitemap (sitemap.py)
 ├── templates/
 │   ├── base.html      plantilla raíz: meta, OG, assets
 │   ├── pages/         páginas completas

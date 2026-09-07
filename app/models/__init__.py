@@ -6,6 +6,7 @@ missing from this file produces migrations that silently drop its table.
 """
 
 from app.models.base import Base
+from app.models.note import Note
 from app.models.password_reset_token import PasswordResetToken
 from app.models.rate_limit import RateLimitHit
 from app.models.role import ADMIN_ROLE, USER_ROLE, Role, user_roles
@@ -16,6 +17,7 @@ __all__ = [
     "ADMIN_ROLE",
     "USER_ROLE",
     "Base",
+    "Note",
     "PasswordResetToken",
     "RateLimitHit",
     "Role",

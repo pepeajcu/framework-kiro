@@ -1,7 +1,6 @@
 # 0006 — Conservar el nombre "Kiro" pese a la colisión
 
-**Estado:** Provisional · 2026-09-01
-**Debe resolverse antes de:** la publicación pública (v1.0.0)
+**Estado:** Aceptada · 2026-09-01 · confirmada para publicación 2026-09-07
 
 ## Contexto
 
@@ -27,10 +26,17 @@ identificadores de código. El paquete de la aplicación se llama `app`, no `kir
 
 ## Consecuencias
 
-- Antes de publicar hay que tomar la decisión definitiva. Está en la Fase 4 del
-  plan, no es un pendiente flotante.
 - Renombrar debe seguir costando minutos. **Regla:** ningún módulo, clase ni
   variable de Python lleva "kiro" en el nombre. La única excepción son los
   prefijos internos de `setup.sh` (`__KIRO_*__`, `KIRO_REPLACE_FILES`), que
   desaparecen del proyecto generado.
 - Verificable: `grep -ri kiro app/` no debe devolver identificadores de código.
+
+## Confirmación para v1.0.0
+
+Al llegar el momento de decidir de verdad (v1.0.0), la elección fue **conservar
+"Kiro"**. El framework es de uso interno y de agencia, no un producto que
+compita por posicionamiento con el IDE de AWS; la colisión de SEO y la
+confusión de marca importan mucho menos en ese contexto que el coste de
+detener la publicación para elegir y propagar un nombre nuevo. Si el uso deja
+de ser interno, esta decisión se reabre con esa información nueva — no antes.

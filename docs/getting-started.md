@@ -75,6 +75,11 @@ las dos formas de pedir una feature a partir de ahí:
   ambiguos: `/spec-new` → `/spec-design` → `/spec-tasks` → `/spec-build`, cada
   uno esperando tu aprobación antes de seguir al siguiente.
 
+Antes de pedir la primera, vale la pena leer `app/routers/notes.py` y sus
+capas (modelo, migración, repositorio, schema, servicio, plantillas, tests):
+es un ejemplo real y completo del golden path, no solo el fragmento de código
+de la skill. Está marcado como removible si tu proyecto no lo necesita.
+
 ## Problemas frecuentes
 
 **El puerto ya está ocupado** — cambia `POSTGRES_PORT` o `APP_PORT` en `.env`.

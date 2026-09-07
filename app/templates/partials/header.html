@@ -13,6 +13,9 @@
          el handler de la página declare OptionalUser o CurrentUser. #}
       {% if user %}
         <span class="text-muted-foreground hidden text-sm sm:inline">{{ user.email }}</span>
+        {# Parte del ejemplo trabajado del golden path — ver
+           app/routers/notes.py. Se borra junto con el resto del ejemplo. #}
+        <a class="btn" data-variant="ghost" data-size="sm" href="/notes">Notas</a>
         {# Salir es POST, no un enlace: un <a> lo siguen los prefetchers del
            navegador y los escáneres de correo, cerrando sesiones sin que nadie
            las cierre. #}

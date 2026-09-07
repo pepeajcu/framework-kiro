@@ -1,29 +1,31 @@
+🇪🇸 [Leer en español](README.es.md)
+
 # Kiro
 
-**Un framework para arrancar proyectos web con IA sin gastar la primera hora
-explicándole la arquitectura.**
+**A framework for starting web projects with AI without spending the first
+hour explaining the architecture to it.**
 
-Clonas, corres `./setup.sh`, y tienes una aplicación funcionando con Postgres,
-componentes, Docker y —lo importante— un archivo de instrucciones que le dice al
-agente cuál es el stack, cómo se organiza el código y qué no debe tocar.
+Clone it, run `./setup.sh`, and you have a running application with Postgres,
+components, Docker, and — the important part — an instructions file that tells
+the agent what the stack is, how the code is organized, and what not to touch.
 
 ```bash
-git clone https://github.com/pepeajcu/framework-kiro.git mi-proyecto
-cd mi-proyecto
+git clone https://github.com/pepeajcu/framework-kiro.git my-project
+cd my-project
 ./setup.sh
 ```
 
-### Qué necesita la máquina
+### What the machine needs
 
 | | |
 |---|---|
-| **git** y **Python 3.12+** | obligatorios; el instalador se detiene sin ellos |
-| **curl** | solo si hay que descargar uv |
-| **uv** | si falta, el instalador se ofrece a instalarlo |
-| **Docker** con el plugin `compose` v2 | opcional: sin él el proyecto se configura igual, pero la base de datos la levantas después con `make up` |
+| **git** and **Python 3.12+** | required; the installer stops without them |
+| **curl** | only to download uv, if needed |
+| **uv** | if missing, the installer offers to install it |
+| **Docker** with the `compose` v2 plugin | optional: the project still gets configured without it, but you bring the database up later with `make up` |
 
-Ejecútalo **desde una terminal**, no con doble clic: si algo falla, el mensaje
-que lo explica va a la terminal. Para dejar constancia de lo que pasó:
+Run it **from a terminal**, not by double-clicking: if something fails, the
+message explaining why goes to the terminal. To keep a record of what happened:
 
 ```bash
 ./setup.sh 2>&1 | tee setup.log
@@ -31,99 +33,115 @@ que lo explica va a la terminal. Para dejar constancia de lo que pasó:
 
 ---
 
-## Por qué existe
+## Why it exists
 
-Cada sesión nueva con una IA empieza igual: reconstruir la arquitectura,
-configurar Docker, decidir dónde van las queries, explicar las convenciones. Ese
-tramo inicial es además donde más alucina el modelo, porque está inventando
-decisiones en vez de seguirlas.
+Every new AI session starts the same way: rebuild the architecture, configure
+Docker, decide where queries live, explain the conventions. That initial
+stretch is also where the model hallucinates the most, because it is inventing
+decisions instead of following them.
 
-Kiro llega con esas decisiones ya tomadas y escritas donde el agente las lee:
+Kiro arrives with those decisions already made and written where the agent
+reads them:
 
-- **`AGENTS.md`** — el stack, las capas, las reglas duras y lo que está
-  prohibido. Formato abierto: lo leen Claude Code, OpenCode, Codex y Cursor.
-- **`PROJECT.md`** — tu dominio de negocio. Lo rellenas una vez y deja de
-  inventarse tus entidades.
-- **`.claude/skills/`** — el camino exacto para añadir una feature, con código
-  real del propio repositorio.
+- **`AGENTS.md`** — the stack, the layers, the hard rules, and what is
+  forbidden. Open format: Claude Code, OpenCode, Codex and Cursor all read it.
+- **`PROJECT.md`** — your business domain. You fill it in once and it stops
+  inventing your entities.
+- **`.claude/skills/`** — the exact path to add a feature, with real code from
+  the repository itself.
 
-## El stack
+## The stack
 
-| Capa | Elección |
+| Layer | Choice |
 |---|---|
-| Lenguaje | Python 3.12+ con tipado obligatorio (`mypy --strict`) |
-| Web | FastAPI, renderizado en servidor de principio a fin |
-| Base de datos | PostgreSQL · SQLAlchemy 2.0 **síncrono** · Alembic |
-| Frontend | Jinja2 + HTMX + [Basecoat](https://basecoatui.com) (shadcn/ui en HTML) |
-| CSS | Tailwind v4 vía CLI standalone — **cero Node.js** |
-| Contenedores | Docker multi-etapa, sin privilegios, listo para Coolify/Dokploy |
+| Language | Python 3.12+ with mandatory typing (`mypy --strict`) |
+| Web | FastAPI, server-rendered from end to end |
+| Database | PostgreSQL · SQLAlchemy 2.0 **synchronous** · Alembic |
+| Frontend | Jinja2 + HTMX + [Basecoat](https://basecoatui.com) (shadcn/ui in HTML) |
+| CSS | Tailwind v4 via the standalone CLI — **zero Node.js** |
+| Containers | Multi-stage Docker, unprivileged, ready for Coolify/Dokploy |
 
-Cada elección está justificada en [`docs/decisions/`](docs/decisions/). Varias
-contradicen lo que un modelo asumiría por defecto, y esa es justamente la razón
-de escribirlas:
+Every choice is justified in [`docs/decisions/`](docs/decisions/). Several of
+them contradict what a model would assume by default, which is exactly why
+they are written down:
 
-- **SQLAlchemy síncrono, no async** — es donde más alucina la IA en este stack, y
-  con SSR el cuello de botella no es la concurrencia
+- **Synchronous SQLAlchemy, not async** — it's where this stack hallucinates
+  the most, and with SSR the bottleneck isn't concurrency
   ([ADR-0002](docs/decisions/0002-sqlalchemy-sincrono.md)).
-- **Sin Node.js** — un solo toolchain, un solo gestor de paquetes
+- **No Node.js** — one toolchain, one package manager
   ([ADR-0005](docs/decisions/0005-sin-nodejs.md)).
-- **Sin Alpine.js** — HTMX y el JS de Basecoat ya lo cubren; un tercer paradigma
-  solo añade confusión ([ADR-0007](docs/decisions/0007-sin-alpinejs.md)).
-- **Sesiones en base de datos, no JWT** — un token autocontenido no se puede
-  revocar, así que cambiar la contraseña no echa a quien te la robó
+- **No Alpine.js** — HTMX and Basecoat's JS already cover it; a third paradigm
+  just adds confusion ([ADR-0007](docs/decisions/0007-sin-alpinejs.md)).
+- **Sessions in the database, not JWT** — a self-contained token cannot be
+  revoked, so changing your password wouldn't kick out whoever stole it
   ([ADR-0008](docs/decisions/0008-sesiones-en-base-de-datos.md)).
 
-## Qué trae hecho
+## What it ships with
 
-- Instalador interactivo que genera secretos, **detecta puertos libres** y deja
-  la base de datos migrada, sembrada y corriendo — con tu cuenta de
-  administrador ya creada.
-- **Autenticación completa**: registro, login con argon2id, sesiones revocables,
-  roles y recuperación de contraseña por correo. Ningún formulario revela si un
-  email tiene cuenta.
-- **Correo transaccional** con tres proveedores intercambiables (consola, Resend,
-  SMTP) y plantillas que editas sin tocar código.
-- **Endurecido de serie**: CSRF en todas las rutas, límites de intentos
-  respaldados por PostgreSQL, cabeceras de seguridad y un identificador por
-  petición en cada línea de log.
-- SSR completo con SEO de serie: canonical, Open Graph, páginas 404/500 propias.
-- Capa de repositorios tipada que hace cumplible la regla "ninguna query fuera
-  de `repositories/`".
-- Alembic con convención de nombres de constraints, para que las migraciones
-  autogeneradas sean revisables.
-- Suite de tests con base de datos aislada y rollback por test.
-- `make check`: lint + tipos + tests + detección de migraciones pendientes.
-- CI que **genera un proyecto desde cero y corre su suite** — lo único que
-  impide que el instalador se pudra en silencio.
+- Interactive installer that generates secrets, **detects free ports**, and
+  leaves the database migrated, seeded and running — with your admin account
+  already created.
+- **Complete authentication**: registration, argon2id login, revocable
+  sessions, roles, and password recovery by email. No form reveals whether an
+  email has an account.
+- **Transactional email** with three interchangeable providers (console,
+  Resend, SMTP) and templates you edit without touching code.
+- **Server-side analytics and SEO**: GTM gated on consent, server-side GA4
+  Measurement Protocol and Meta Conversions API, a dynamic sitemap.xml and
+  robots.txt, Search Console verification.
+- **Hardened by default**: CSRF on every route, rate limits backed by
+  PostgreSQL, security headers, and a request id on every log line.
+- Full SSR with SEO baked in: canonical URLs, Open Graph, its own 404/500
+  pages.
+- A typed repository layer that makes the "no query outside `repositories/`"
+  rule enforceable.
+- Alembic with a constraint-naming convention, so autogenerated migrations
+  stay reviewable.
+- Test suite with an isolated database and a rollback per test.
+- `make check`: lint + types + tests + pending-migration detection.
+- `make audit`: dependencies checked against the known-vulnerability database
+  (`pip-audit`).
+- A real, complete worked example of the golden path
+  (`app/routers/notes.py` and its layers) — read it before asking an AI for
+  your own first feature.
+- CI that **generates a project from scratch and runs its test suite** — the
+  only thing that keeps the installer from rotting silently.
 
-## Estado
+## Status
 
-En desarrollo activo. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
+Published. See [`CHANGELOG.md`](CHANGELOG.md) and the
 [roadmap](docs/framework/roadmap.md).
 
-| Versión | Contenido | Estado |
+| Version | Contents | Status |
 |---|---|---|
-| v0.1.0 | Esqueleto: Docker, SSR, componentes, capa IA, CI | Publicada |
-| v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Publicada |
-| v0.3.0 | Analítica server-side y SEO | Publicada |
-| v1.0.0 | Documentación, ejemplo completo, release público | Pendiente |
+| v0.1.0 | Skeleton: Docker, SSR, components, AI layer, CI | Published |
+| v0.2.0 | Auth, transactional email, CSRF and security | Published |
+| v0.3.0 | Server-side analytics and SEO | Published |
+| v1.0.0 | Documentation, complete example, public release | Published |
 
-## Documentación
+## Documentation
 
-- [Primeros pasos](docs/getting-started.md)
-- [Arquitectura](docs/architecture.md)
-- [Desplegar en Coolify](docs/deploy-coolify.md)
-- [Actualizar un proyecto existente](docs/upgrading.md)
-- [Dependencias vendorizadas](docs/vendor.md)
-- [Decisiones de arquitectura](docs/decisions/)
+- [Getting started](docs/getting-started.md)
+- [Architecture](docs/architecture.md)
+- [Deploying to Coolify](docs/deploy-coolify.md)
+- [Upgrading an existing project](docs/upgrading.md)
+- [Vendored dependencies](docs/vendor.md)
+- [Architecture decisions](docs/decisions/)
 
-## Nota sobre el nombre
+Most of that documentation is written in Spanish — this is a tool the author
+uses with Spanish-speaking clients and collaborators day to day, and keeping a
+second copy of every page in sync was not worth it. `AGENTS.md`, `PROJECT.md`
+and every ADR are already in English, since those are what an AI agent reads.
 
-"Kiro" es también el IDE agéntico de AWS. La colisión está reconocida y
-documentada en [ADR-0006](docs/decisions/0006-nombre-kiro.md); el nombre está
-contenido en un punto único para poder cambiarlo antes de un lanzamiento
-público.
+## A note on the name
 
-## Licencia
+"Kiro" is also the name of AWS's agentic IDE, in the same space. The collision
+is acknowledged in [ADR-0006](docs/decisions/0006-nombre-kiro.md): the
+decision, confirmed for this release, is to keep the name — this is an
+internal, agency-use framework, not a product competing for positioning
+against AWS's IDE. The name still lives in a single, containable spot in the
+code if it ever needs to change.
 
-MIT — ver [`LICENSE`](LICENSE).
+## License
+
+MIT — see [`LICENSE`](LICENSE).

@@ -14,7 +14,7 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0003](0003-git-clone-sobre-plantillas.md) | `git clone` + `setup.sh` como distribución | Aceptada |
 | [0004](0004-basecoat-en-vez-de-portar-shadcn.md) | Adoptar Basecoat en vez de portar shadcn/ui | Aceptada |
 | [0005](0005-sin-nodejs.md) | Cero Node.js en el toolchain | Aceptada |
-| [0006](0006-nombre-kiro.md) | Conservar el nombre "Kiro" pese a la colisión | Provisional |
+| [0006](0006-nombre-kiro.md) | Conservar el nombre "Kiro" pese a la colisión | Aceptada |
 | [0007](0007-sin-alpinejs.md) | Sin Alpine.js | Aceptada |
 | [0008](0008-sesiones-en-base-de-datos.md) | Sesiones en base de datos, no JWT | Aceptada |
 | [0009](0009-csrf-doble-envio.md) | CSRF de doble envío, validado como dependencia | Aceptada |

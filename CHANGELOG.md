@@ -11,6 +11,41 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [1.0.0] — 2026-09-07 · Listo para publicar
+
+Cierra el roadmap inicial. Nada de lo que sigue cambia contratos existentes:
+es documentación, un ejemplo opcional y una herramienta de auditoría.
+
+### Añadido
+
+- `[SEGURO]` **README bilingüe.** `README.md` pasa a inglés; `README.es.md`
+  conserva el texto en español, cruzados con un enlace arriba de cada uno.
+  El resto de la documentación (ADRs, guías, `docs/framework/`) se queda en
+  español — es donde vive el razonamiento detallado, y mantener dos copias de
+  cada página no compensaba. `AGENTS.md`, `PROJECT.md` y los ADRs ya estaban
+  en inglés donde importa: lo que lee un agente de IA.
+- `[MIGRACIÓN]` **Ejemplo de CRUD completo: "Notes".** Un proyecto que quiera
+  traerlo copia `app/models/note.py` (+ su import en
+  `app/models/__init__.py`), `app/repositories/note.py`,
+  `app/schemas/note.py`, `app/services/note.py`, `app/routers/notes.py` (+ su
+  registro en `app/main.py`), `app/templates/pages/notes/`, la línea de
+  `partials/header.html`, `tests/test_notes.py`, y genera su propia migración
+  con `make revision`. **Es opcional**: el docstring de `notes.py` trae la
+  lista exacta de archivos a borrar si un proyecto no lo quiere, el mismo
+  trato que ya recibía `demo_ping`. Demuestra las 8 capas del golden path más
+  una regla de negocio real (solo el dueño de una nota puede borrarla) y los
+  dos patrones de interacción del framework: formulario clásico
+  post/redirect/get para crear, HTMX puro (`hx-delete` + `outerHTML`) para
+  borrar.
+- `[SEGURO]` **`pip-audit`** integrado: dependencia de desarrollo, `make
+  audit`, y un paso en CI después de los tests. Sin hallazgos en esta
+  versión.
+- `[SEGURO]` `docs/architecture.md` documenta `app/analytics/` y `app/seo/`
+  (añadidos en v0.3.0); `docs/getting-started.md` señala el ejemplo de notas.
+- `[SEGURO]` [ADR-0006](docs/decisions/0006-nombre-kiro.md) resuelto: se
+  conserva el nombre "Kiro". Era el único punto pendiente de decisión antes
+  de esta versión.
+
 ## [0.3.0] — 2026-09-07 · Analítica y SEO
 
 Todo lo de este hito es opt-in por variable de entorno: un proyecto que no

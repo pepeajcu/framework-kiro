@@ -54,13 +54,16 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] Banner de consentimiento con HTMX, sin librerías
 - [x] ADRs 0011–0012
 
-## v1.0.0 — Listo para publicar  *(siguiente)*
+## v1.0.0 — Listo para publicar  *(publicada — 2026-09-07)*
 
-- [ ] Documentación completa y README en inglés
-- [ ] Proyecto de ejemplo con un CRUD completo
-- [ ] Auditoría de seguridad y `pip-audit`
-- [ ] Decidir el nombre público definitivo (ADR-0006)
-- [ ] Tag y publicación
+- [x] Documentación completa y README en inglés — raíz bilingüe
+      (`README.md` en inglés, `README.es.md` en español)
+- [x] Proyecto de ejemplo con un CRUD completo — "Notes"
+      (`app/routers/notes.py` y sus capas), marcado como removible
+- [x] Auditoría de seguridad y `pip-audit` — integrado como `make audit` y
+      paso de CI; sin hallazgos
+- [x] Decidir el nombre público definitivo (ADR-0006) — se conserva "Kiro"
+- [x] Tag y publicación
 
 ## Fuera de alcance por ahora
 

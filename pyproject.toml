@@ -38,6 +38,7 @@ dev = [
     "mypy>=1.14",
     "ruff>=0.9",
     "pytailwindcss>=0.2",         # Tailwind standalone: cero Node.js
+    "pip-audit>=2.7",             # dependencias contra vulnerabilidades conocidas
 ]
 
 [tool.uv]

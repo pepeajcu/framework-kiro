@@ -10,7 +10,7 @@ APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
 .PHONY: help dev up down logs ps shell migrate revision migrations-check seed \
-	css css-watch lint format types test cov check upgrade clean
+	css css-watch lint format types test cov audit check upgrade clean
 
 # --- Ayuda ------------------------------------------------------------------
 
@@ -79,6 +79,9 @@ test:  ## Correr la suite de tests
 
 cov:  ## Tests con reporte de cobertura
 	uv run pytest --cov --cov-report=term-missing
+
+audit:  ## Buscar vulnerabilidades conocidas en las dependencias
+	uv run pip-audit
 
 check: lint types test migrations-check  ## Todo lo anterior. Es lo que corre CI.
 # `lint` incluye 'ruff format --check' a propósito: CI lo comprueba, y sin él

@@ -70,6 +70,9 @@ jobs:
       - name: Tests
         run: uv run pytest --cov --cov-report=term-missing
 
+      - name: Auditoría de dependencias
+        run: uv run pip-audit
+
   docker:
     runs-on: ubuntu-latest
 
