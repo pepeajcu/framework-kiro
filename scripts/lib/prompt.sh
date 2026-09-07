@@ -73,14 +73,25 @@ prompt::sanitize() {
 # --- Transformaciones ------------------------------------------------------
 
 # "Mi Proyecto Web" -> "mi-proyecto-web"
-# Se transliteran los acentos del español a mano en vez de depender de
-# `iconv //TRANSLIT`, cuyo comportamiento difiere entre glibc y macOS.
+#
+# Lo hace Python, no sed, porque `sed y/áé…/ae…/` cuenta BYTES cuando la
+# configuración regional no es UTF-8 (una instalación mínima, un contenedor o
+# un WSL sin locales generados). Ahí los dos conjuntos dejan de medir lo mismo,
+# sed aborta con "strings for `y' command are different lengths", y el slug
+# salía vacío: la pregunta se repetía sin default válido para siempre.
+# python3 ya es un requisito del instalador y normaliza Unicode de verdad.
 prompt::slugify() {
-  printf '%s' "$1" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -e 'y/áàäâãéèëêíìïîóòöôõúùüûñç/aaaaaeeeeiiiiooooouuuunc/' \
-          -e 's/[^a-z0-9]\+/-/g' \
-          -e 's/^-\+//' -e 's/-\+$//'
+  python3 - "$1" <<'SLUGIFY'
+import re
+import sys
+import unicodedata
+
+# NFKD separa la letra base de su diacrítico; descartar los diacríticos deja
+# el ASCII equivalente ('ñ' -> 'n', 'ç' -> 'c') sin tablas escritas a mano.
+text = unicodedata.normalize("NFKD", sys.argv[1])
+text = "".join(ch for ch in text if not unicodedata.combining(ch))
+sys.stdout.write(re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower())
+SLUGIFY
 }
 
 # Un slug con guiones no sirve como nombre de base de datos ni de rol en
@@ -92,7 +103,7 @@ prompt::to_snake() { printf '%s' "$1" | tr '-' '_'; }
 # prompt::ask "Pregunta" "valor-por-defecto" [validador]
 prompt::ask() {
   local question=$1 default=${2:-} validator=${3:-validate::nonempty}
-  local answer=""
+  local answer="" stdin_closed=false
 
   if [[ ${NON_INTERACTIVE:-false} == true ]]; then
     printf '%s' "$default"
@@ -106,9 +117,9 @@ prompt::ask() {
     # -e activa readline: las flechas mueven el cursor en vez de insertar
     # secuencias de escape en el valor. -p escribe el prompt a stderr, así que
     # no contamina el stdout que captura el llamador.
-    # Si stdin se cierra (pipe, Ctrl-D) se acepta el valor por defecto en vez
-    # de entrar en un bucle infinito.
+    # Si stdin se cierra (pipe, Ctrl-D) se acepta el valor por defecto.
     if ! IFS= read -r -e -p "$prompt_text" answer; then
+      stdin_closed=true
       answer=$default
       printf '\n' >&2
     fi
@@ -117,6 +128,14 @@ prompt::ask() {
     if "$validator" "$answer"; then
       printf '%s' "$answer"
       return 0
+    fi
+
+    # Sin stdin, repetir la pregunta es un bucle infinito: el default ya falló
+    # la validación y no hay forma de escribir otro. Pasaba de verdad cuando el
+    # default salía vacío, y el instalador se quedaba escupiendo el mismo aviso.
+    if [[ $stdin_closed == true ]]; then
+      log::die "«$question» no tiene una respuesta válida y no hay entrada para pedirla" \
+        "pásala por flag (./setup.sh --help) o ejecuta el instalador en una terminal interactiva"
     fi
   done
 }

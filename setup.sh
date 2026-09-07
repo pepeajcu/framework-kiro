@@ -35,16 +35,25 @@ MUTATED=false
 on_failure() {
   local code=$?
   [[ $code -eq 0 ]] && return 0
-  [[ $MUTATED != true ]] && return 0
 
-  printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
-  printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
-  printf '    rm -f .env .kiro-setup-done\n' >&2
-  printf '    git checkout -- .        %s# descarta los archivos ya personalizados%s\n' \
-    "$C_DIM" "$C_RESET" >&2
-  printf '    ./setup.sh\n\n' >&2
-  printf '  %sSi ya no tienes el historial de git, lo más rápido es borrar la\n' "$C_DIM" >&2
-  printf '  carpeta y volver a clonar.%s\n\n' "$C_RESET" >&2
+  if [[ $MUTATED == true ]]; then
+    printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
+    printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
+    printf '    rm -f .env .kiro-setup-done\n' >&2
+    printf '    git checkout -- .        %s# descarta los archivos ya personalizados%s\n' \
+      "$C_DIM" "$C_RESET" >&2
+    printf '    ./setup.sh\n\n' >&2
+    printf '  %sSi ya no tienes el historial de git, lo más rápido es borrar la\n' "$C_DIM" >&2
+    printf '  carpeta y volver a clonar.%s\n\n' "$C_RESET" >&2
+  fi
+
+  # Lanzado con doble clic desde el explorador de archivos, la ventana se cierra
+  # en cuanto el script termina y el error no llega a leerse: el síntoma que
+  # recibes es "se cierra solo", sin ninguna pista de la causa.
+  if [[ -t 0 && ${NON_INTERACTIVE:-false} != true ]]; then
+    printf '  %sPulsa Enter para cerrar.%s ' "$C_DIM" "$C_RESET" >&2
+    read -r _ || true
+  fi
 }
 trap on_failure EXIT
 
@@ -73,6 +82,9 @@ APP_PORT=""
 
 NON_INTERACTIVE=false
 DO_BOOTSTRAP=true
+# Por qué se saltó el bootstrap, para que el mensaje diga la verdad: la flag no
+# es el único motivo desde que faltar Docker dejó de ser fatal.
+BOOTSTRAP_SKIP_REASON="--no-bootstrap"
 KEEP_FRAMEWORK_FILES=false
 FORCE=false
 
@@ -168,11 +180,60 @@ run_preflight() {
   preflight::require_cmd git "instálalo con el gestor de paquetes de tu sistema"
   preflight::require_python
   preflight::ensure_uv "$NON_INTERACTIVE"
-  if [[ $DO_BOOTSTRAP == true ]]; then
-    preflight::require_docker
-  else
-    log::info "docker omitido (--no-bootstrap)"
+
+  if [[ $DO_BOOTSTRAP != true ]]; then
+    log::info "docker omitido ($BOOTSTRAP_SKIP_REASON)"
+    return 0
   fi
+
+  if preflight::check_docker; then
+    return 0
+  fi
+
+  # Docker solo hace falta para levantar PostgreSQL, así que su ausencia no
+  # tiene por qué abortar el instalador. Pero seguir sin más tampoco vale: el
+  # script sabe cuál es el arreglo, y ofrecer la salida de emergencia sin
+  # recomendarlo primero es elegir por el usuario sin decírselo.
+  if [[ $NON_INTERACTIVE == true ]]; then
+    printf '\n' >&2
+    preflight::docker_fix
+    printf '\n' >&2
+    log::die "$PREFLIGHT_DOCKER_PROBLEM" \
+      "arréglalo, o añade --no-bootstrap para configurar el proyecto sin levantar la base de datos"
+  fi
+
+  explain_docker_tradeoff
+  if ! prompt::yes_no "¿Continuar de todas formas, sin base de datos?" "n"; then
+    printf '\n' >&2
+    log::die "$PREFLIGHT_DOCKER_PROBLEM" \
+      "arréglalo con el comando de arriba y vuelve a correr ./setup.sh"
+  fi
+
+  DO_BOOTSTRAP=false
+  BOOTSTRAP_SKIP_REASON="Docker no disponible"
+  log::warn "se configurará el proyecto sin base de datos"
+}
+
+# El arreglo recomendado, qué se gana con él, y qué toca hacer a mano si no.
+# Va antes de la pregunta a propósito: quien responde tiene que saber lo que
+# está eligiendo, y "¿continuar sin base de datos?" a secas no lo dice.
+explain_docker_tradeoff() {
+  printf '\n  %sRecomendado: arréglalo y vuelve a correr ./setup.sh%s\n\n' \
+    "$C_BOLD" "$C_RESET" >&2
+  preflight::docker_fix
+
+  printf '\n  %sCon Docker, este instalador termina el trabajo entero:%s\n' \
+    "$C_BOLD" "$C_RESET" >&2
+  printf '    · PostgreSQL levantado y aceptando conexiones\n' >&2
+  printf '    · el esquema migrado\n' >&2
+  printf '    · tu cuenta de administrador creada, con su contraseña\n' >&2
+  printf '    · el CSS de Tailwind compilado\n' >&2
+  printf '    · dependencias instaladas en .venv/\n' >&2
+
+  printf '\n  %sSin Docker el proyecto se configura igual —.env, nombre, plantillas—\n' "$C_DIM" >&2
+  printf '  pero esos pasos los das tú después, y hasta entonces la aplicación\n' >&2
+  printf '  no arranca:%s\n' "$C_RESET" >&2
+  printf '    make up && make migrate && make seed && make css\n\n' >&2
 }
 
 gather_answers() {
@@ -505,7 +566,7 @@ setup_git() {
 
 bootstrap() {
   [[ $DO_BOOTSTRAP == true ]] || {
-    log::info "bootstrap omitido (--no-bootstrap)"
+    log::info "bootstrap omitido ($BOOTSTRAP_SKIP_REASON)"
     return 0
   }
 
@@ -563,19 +624,37 @@ write_marker() {
 
 final_message() {
   printf '\n%s%s  ✓ %s está listo.%s\n\n' "$C_BOLD" "$C_GREEN" "$PROJECT_NAME" "$C_RESET"
+
+  # Cuando no hubo bootstrap, lo pendiente va PRIMERO: 'make dev' es lo primero
+  # que se lee y lo primero que falla si la base de datos no existe todavía.
+  if [[ $DO_BOOTSTRAP != true ]]; then
+    printf '  %sPendiente: la base de datos%s (%s)\n' \
+      "$C_BOLD" "$C_RESET" "$BOOTSTRAP_SKIP_REASON"
+    printf '    make up && make migrate && make seed && make css\n'
+    printf '    %sHasta que corras eso, la aplicación no arranca.%s\n\n' "$C_DIM" "$C_RESET"
+  fi
+
   printf '  %sSiguientes pasos%s\n' "$C_BOLD" "$C_RESET"
   printf '    make dev            arrancar en http://localhost:%s\n' "$APP_PORT"
   printf '    make check          lint + tipos + tests\n'
   printf '    make help           ver todos los comandos\n\n'
+
+  printf '  %sTu cuenta de administrador%s\n' "$C_BOLD" "$C_RESET"
   if [[ $DO_BOOTSTRAP == true && -n $ADMIN_PASSWORD ]]; then
-    printf '  %sTu cuenta de administrador%s\n' "$C_BOLD" "$C_RESET"
     printf '    %s / %s\n' "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
     printf '    Está también en .env. Cámbiala antes de desplegar.\n\n'
+  else
+    printf '    %s\n' "$ADMIN_EMAIL"
+    printf '    %sLa contraseña está en .env (ADMIN_PASSWORD). La cuenta no existe\n' "$C_DIM"
+    printf '    todavía: la crea "make seed".%s\n\n' "$C_RESET"
   fi
 
-  printf '  %sAntes de pedirle una feature a la IA%s\n' "$C_BOLD" "$C_RESET"
-  printf '    Rellena %sPROJECT.md%s con las entidades y reglas de negocio.\n' "$C_BOLD" "$C_RESET"
-  printf '    Es lo que el agente lee para no inventarse tu dominio.\n\n'
+  printf '  %sSiguiente paso%s\n' "$C_BOLD" "$C_RESET"
+  printf '    Abre Claude Code u OpenCode en esta carpeta y corre:\n'
+  printf '      %s/kiro-init%s\n' "$C_BOLD" "$C_RESET"
+  printf '    Te entrevista para llenar %sPROJECT.md%s y te explica cómo pedir\n' "$C_BOLD" "$C_RESET"
+  printf '    features a partir de ahí — es lo que el agente lee para no\n'
+  printf '    inventarse tu dominio.\n\n'
 }
 
 main() {

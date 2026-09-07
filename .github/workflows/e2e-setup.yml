@@ -24,6 +24,97 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           shellcheck -x setup.sh scripts/lib/*.sh
 
+  entornos-hostiles:
+    runs-on: ubuntu-latest
+    name: El instalador sobrevive a una máquina pobre
+    # Los fallos de este job no aparecen en la máquina de quien desarrolla el
+    # framework, que tiene todo instalado: aparecen en el portátil recién
+    # formateado de quien clona el repositorio por primera vez.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Un locale sin UTF-8 no rompe el slug
+        # `sed y/áé…/ae…/` cuenta BYTES fuera de UTF-8, así que los dos
+        # conjuntos dejaban de medir lo mismo y sed abortaba. El slug salía
+        # vacío y la pregunta se repetía sin un default válido.
+        run: |
+          out=$(LC_ALL=C LANG=C bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            prompt::slugify "Peluquería Ñandú & Co."')
+          test "$out" = "peluqueria-nandu-co" || { echo "slug inesperado: '$out'"; exit 1; }
+
+      - name: Sin stdin y con un default inválido, aborta en vez de colgarse
+        run: |
+          set +e
+          timeout 30 bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            prompt::ask "Identificador" "" validate::slug' </dev/null >/dev/null 2>&1
+          status=$?
+          set -e
+          # 124 es el timeout: significa que volvió el bucle infinito.
+          test "$status" -eq 1 || { echo "esperaba salida 1, hubo $status"; exit 1; }
+
+      - name: uv instalado fuera del PATH se encuentra igual
+        # En Debian y Ubuntu ~/.profile añade ~/.local/bin solo si ya existía al
+        # iniciar sesión: tras instalar uv, sigue invisible hasta el siguiente
+        # login. El instalador lo descargaba, no lo veía, y moría.
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$(command -v uv)" "$HOME/.local/bin/uv"
+          out=$(env PATH=/usr/bin:/bin bash -c '
+            source scripts/lib/log.sh
+            source scripts/lib/prompt.sh
+            source scripts/lib/preflight.sh
+            preflight::ensure_uv true' 2>&1)
+          echo "$out"
+          echo "$out" | grep -q "fuera del PATH"
+
+      - name: Con el daemon de Docker caído, recomienda arreglarlo
+        # El caso real: docker instalado, compose v2 disponible, daemon sin
+        # responder (servicio parado o usuario fuera del grupo 'docker').
+        run: |
+          mkdir -p /tmp/nodocker
+          # 'docker compose version' funciona; todo lo demás —'docker info'
+          # incluido— falla, que es lo que se ve con el daemon parado.
+          printf '%s\n' '#!/bin/sh' \
+            '[ "$1" = compose ] && [ "$2" = version ] && exit 0' \
+            'exit 1' > /tmp/nodocker/docker
+          chmod +x /tmp/nodocker/docker
+
+          rm -rf /tmp/sin-docker && cp -a . /tmp/sin-docker && cd /tmp/sin-docker
+
+          # Con stdin cerrado toda pregunta toma su valor por defecto, y el de
+          # ésta es NO: arreglar Docker tiene que ser lo que sale de pulsar
+          # Enter, no la salida de emergencia.
+          set +e
+          PATH=/tmp/nodocker:$PATH timeout 600 ./setup.sh \
+            --git-mode keep --keep-framework-files </dev/null > /tmp/rechazo.txt 2>&1
+          status=$?
+          set -e
+          cat /tmp/rechazo.txt
+          test "$status" -eq 1 || { echo "esperaba salida 1, hubo $status"; exit 1; }
+          grep -q "el daemon de Docker no responde" /tmp/rechazo.txt
+          grep -q "Recomendado" /tmp/rechazo.txt
+          grep -q "sudo systemctl enable --now docker" /tmp/rechazo.txt
+          grep -q "usermod -aG docker" /tmp/rechazo.txt
+          grep -q "termina el trabajo entero" /tmp/rechazo.txt
+          # Y no tocó nada: el fallo es anterior a la primera escritura.
+          test ! -f .env
+
+      - name: Quien aun así elige seguir, se lleva el proyecto configurado
+        run: |
+          cd /tmp/sin-docker
+          printf 'y\n' | PATH=/tmp/nodocker:$PATH timeout 600 ./setup.sh \
+            --git-mode keep --keep-framework-files | tee /tmp/salida.txt
+          test -f .env
+          grep -q 'name = "mi-proyecto"' pyproject.toml
+          # El mensaje final tiene que decir qué queda pendiente.
+          grep -q "Pendiente: la base de datos" /tmp/salida.txt
+          grep -q "make up && make migrate && make seed && make css" /tmp/salida.txt
+
   generate-and-check:
     runs-on: ubuntu-latest
     strategy:
@@ -141,6 +232,15 @@ jobs:
       - name: Correr setup.sh dos veces aborta sin destruir nada
         run: |
           cd /tmp/generated
+          # setup.sh se borró a sí mismo al limpiar los archivos del framework.
+          # Sin reponerlo, esto medía un 127 de "command not found": el paso
+          # pasaba en verde sin llegar a ejecutar la guarda del marcador.
+          cp "$GITHUB_WORKSPACE/setup.sh" setup.sh
+          cp -r "$GITHUB_WORKSPACE/scripts/lib" scripts/lib
           cp .env /tmp/env-antes
-          ! ./setup.sh --non-interactive --name "Otro" --no-bootstrap --git-mode keep
+          set +e
+          ./setup.sh --non-interactive --name "Otro" --no-bootstrap --git-mode keep
+          status=$?
+          set -e
+          test "$status" -eq 1 || { echo "esperaba salida 1, hubo $status"; exit 1; }
           diff -q .env /tmp/env-antes

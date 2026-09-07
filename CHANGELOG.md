@@ -11,6 +11,54 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [0.2.1] — 2026-09-03 · El instalador en una máquina que no es la tuya
+
+Cuatro fallos que solo aparecen al clonar el repositorio en un equipo recién
+formateado, donde `setup.sh` se cerraba —o se colgaba— sin dejar claro por qué.
+Todo esto vive en `setup.sh` y `scripts/lib/`, que un proyecto generado ya no
+tiene: **no hay nada que traer a un proyecto existente**.
+
+### Corregido
+
+- `[SEGURO]` **El slug se calculaba con `sed y/…/…/`, que cuenta bytes cuando la
+  configuración regional no es UTF-8** (instalación mínima, contenedor, WSL sin
+  locales generados). Ahí sed abortaba con *"strings for `y' command are
+  different lengths"*, el slug salía vacío, y la pregunta se repetía con un
+  valor por defecto que nunca pasaba la validación: un bucle infinito. Ahora la
+  transliteración la hace `python3`, que ya es un requisito del instalador.
+- `[SEGURO]` **`prompt::ask` se colgaba en bucle** cuando el valor por defecto no
+  pasaba la validación y no había stdin para corregirlo. Ahora aborta con un
+  mensaje que dice qué flag usar.
+- `[SEGURO]` **uv se instalaba y el instalador no lo encontraba.** En Debian y
+  Ubuntu, `~/.profile` añade `~/.local/bin` al PATH solo si ese directorio ya
+  existía al iniciar sesión; en una máquina nueva no existe. El instalador
+  descargaba uv, moría con *"uv se instaló pero no está en el PATH"*, y volver a
+  correrlo repetía el ciclo entero. Ahora se fija el destino con
+  `UV_INSTALL_DIR`, se busca también en `XDG_BIN_HOME` y `~/.cargo/bin`, se
+  adopta un uv ya instalado fuera del PATH, y si el instalador de uv falla se
+  enseña su salida en vez de taparla.
+- `[SEGURO]` **Faltar Docker ya no aborta el instalador, pero tampoco se pasa de
+  largo.** El diagnóstico distingue *no instalado*, *sin plugin compose v2* y
+  *daemon caído* —tres arreglos distintos—, **recomienda el comando concreto**
+  para el caso detectado y explica qué se gana con él (PostgreSQL levantado,
+  esquema migrado, administrador sembrado, CSS compilado) frente a lo que
+  tocaría hacer a mano. Solo entonces ofrece seguir sin base de datos, y con el
+  **«no» por defecto**: si el instalador sabe cuál es la solución, ofrecer la
+  salida de emergencia sin recomendarla primero es elegir por quien instala sin
+  decírselo. También se comprueba `curl` antes de usarlo.
+- `[SEGURO]` El mensaje final pone lo pendiente **antes** de `make dev`, que es
+  lo primero que se lee y lo primero que falla sin base de datos.
+
+### Añadido
+
+- `[SEGURO]` Si el instalador falla y hay una terminal delante, espera a que
+  pulses Enter antes de salir. Lanzado con doble clic desde el explorador de
+  archivos, la ventana se cerraba con el error dentro y el síntoma que llegaba
+  era "se cierra solo".
+- `[SEGURO]` Job `entornos-hostiles` en el workflow de e2e: locale sin UTF-8,
+  stdin cerrado, uv fuera del PATH y una máquina sin Docker. Son fallos que no
+  se reproducen en el equipo de quien mantiene el framework.
+
 ## [0.2.0] — 2026-09-03 · Auth, correo y seguridad
 
 Un proyecto generado ya sabe quién le está pidiendo las páginas. Registro,
