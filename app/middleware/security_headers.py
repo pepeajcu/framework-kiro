@@ -37,13 +37,21 @@ from app.config import Settings
 # ADR-0010.
 CONTENT_SECURITY_POLICY = {
     "default-src": "'self'",
-    "script-src": "'self' 'unsafe-inline'",
+    # googletagmanager.com only matters when GTM_ID is set — see app/config.py.
+    # An unused directive here costs nothing; the snippet itself is the gate.
+    "script-src": "'self' 'unsafe-inline' https://www.googletagmanager.com",
     # Tailwind ships a stylesheet, but component libraries and the browser's own
     # print styles use inline `style=` attributes.
     "style-src": "'self' 'unsafe-inline'",
-    "img-src": "'self' data:",
+    "img-src": "'self' data: https://www.googletagmanager.com",
     "font-src": "'self'",
-    "connect-src": "'self'",
+    # Tags GTM loads (GA4 among them) call these domains directly from the
+    # browser, over fetch/beacon — CSP blocks by destination, not by who loaded
+    # the script that makes the call.
+    "connect-src": (
+        "'self' https://www.googletagmanager.com "
+        "https://*.google-analytics.com https://*.analytics.google.com"
+    ),
     "form-action": "'self'",
     "frame-ancestors": "'none'",
     "base-uri": "'self'",

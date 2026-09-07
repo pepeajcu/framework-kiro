@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
+from app.services.consent import CONSENT_COOKIE
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -80,12 +81,18 @@ def render(
     where the authentication dependencies and the CSRF middleware leave them, so
     no handler has to pass them. `user` is None on pages whose handler does not
     declare `OptionalUser` or `CurrentUser`.
+
+    `consent` is the raw cookie-consent cookie value: `"accepted"`,
+    `"rejected"`, or `None` if the visitor has not decided yet. `base.html`
+    uses it to show the banner and to gate the GTM snippet — see
+    `app.services.consent`.
     """
     merged = dict(context or {})
     merged.setdefault("user", getattr(request.state, "user", None))
     # Left there by CsrfCookieMiddleware. Every form needs it, so no template
     # should have to be passed it by hand.
     merged.setdefault("csrf_token", getattr(request.state, "csrf_token", ""))
+    merged.setdefault("consent", request.cookies.get(CONSENT_COOKIE))
 
     return templates.TemplateResponse(
         request=request,

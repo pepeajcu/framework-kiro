@@ -19,3 +19,5 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0008](0008-sesiones-en-base-de-datos.md) | Sesiones en base de datos, no JWT | Aceptada |
 | [0009](0009-csrf-doble-envio.md) | CSRF de doble envío, validado como dependencia | Aceptada |
 | [0010](0010-cabeceras-de-seguridad-y-csp.md) | Cabeceras de seguridad y CSP con `'unsafe-inline'` | Aceptada |
+| [0011](0011-consentimiento-y-analitica.md) | Consentimiento por cookie y analítica server-side sin bloquear al usuario | Aceptada |
+| [0012](0012-registro-de-sitemap.md) | Sitemap por registro de proveedores, no por consulta a un modelo | Aceptada |

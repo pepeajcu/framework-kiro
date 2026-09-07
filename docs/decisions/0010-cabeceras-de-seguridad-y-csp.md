@@ -56,7 +56,9 @@ del navegador.
 - Un proyecto que no use los macros de diálogo, command ni toast puede quitar
   `'unsafe-inline'` de `script-src` y quedarse con una CSP estricta. Son dos
   palabras en un diccionario.
-- Cuando entre la analítica (v0.3.0), GTM pedirá abrir `script-src` y
-  `connect-src` a sus dominios. Ese cambio se hace en el mismo diccionario y
-  toca actualizar este ADR.
+- **Hecho en v0.3.0:** `script-src` e `img-src` abren
+  `https://www.googletagmanager.com`, y `connect-src` abre los dominios de
+  `*.google-analytics.com` y `*.analytics.google.com` que el tag de GA4 dentro
+  de GTM llama directamente desde el navegador. Ver ADR-0011 para el resto de
+  la analítica.
 - Si algún día Basecoat quita sus handlers en línea, esto se revisa.

@@ -11,6 +11,39 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [0.3.0] — 2026-09-07 · Analítica y SEO
+
+Todo lo de este hito es opt-in por variable de entorno: un proyecto que no
+rellena nada no carga ni un script ni manda una sola petición de más. Ninguna
+pieza necesita tabla ni migración.
+
+### Añadido
+
+- `[MIGRACIÓN]` Seis variables nuevas en `Settings`
+  (`gtm_id`, `ga4_measurement_id`, `ga4_api_secret`, `meta_pixel_id`,
+  `meta_capi_token`, `gsc_verification`), documentadas en `.env.example`.
+  Un proyecto existente solo necesita traer las líneas nuevas de
+  `.env.example` que quiera usar — todas son opcionales.
+- `[SEGURO]` **Banner de consentimiento** (`GET/POST /consent`), HTMX puro,
+  sin librería de terceros. Gatilla tanto el snippet de GTM en el `<head>`
+  como los eventos server-side de GA4/Meta: sin `"accepted"`, ninguno de los
+  dos se dispara. Ver [ADR-0011](docs/decisions/0011-consentimiento-y-analitica.md).
+- `[SEGURO]` **GTM** condicionado a `GTM_ID` y al consentimiento, renderizado
+  en `base.html` — cero JavaScript de terceros sin que el visitante lo acepte.
+- `[SEGURO]` **`app/analytics/`**: GA4 Measurement Protocol y Meta Conversions
+  API server-side, con hashing SHA-256 de PII para Meta
+  (`app/analytics/hashing.py`). Ambos activos a la vez si están configurados;
+  ninguno relanza sus errores de red, y se disparan con `BackgroundTasks`
+  desde `login()`/`register()` para no sumar latencia a la respuesta. Ver
+  ADR-0011.
+- `[SEGURO]` **`sitemap.xml`** dinámico por registro de proveedores
+  (`app/seo/sitemap.py`, `register_sitemap_provider`) y **`robots.txt`**
+  fijo que oculta los formularios de auth. Ver
+  [ADR-0012](docs/decisions/0012-registro-de-sitemap.md).
+- `[SEGURO]` Verificación de Google Search Console vía `GSC_VERIFICATION`.
+- `[SEGURO]` CSP actualizada para los dominios de GTM/GA4 — ver ADR-0010.
+- `[SEGURO]` ADRs 0011 y 0012.
+
 ## [0.2.1] — 2026-09-03 · El instalador en una máquina que no es la tuya
 
 Cuatro fallos que solo aparecen al clonar el repositorio en un equipo recién

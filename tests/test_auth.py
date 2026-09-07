@@ -387,3 +387,57 @@ def test_seeding_an_admin_twice_changes_nothing(db_session):
     admins = [u for u in UserRepository(db_session).list() if u.email == "admin@example.com"]
     assert len(admins) == 1
     assert admins[0].has_role("admin")
+
+
+# --- Analytics ----------------------------------------------------------
+
+
+def _wire_memory_analytics(client):
+    """Point the running app's analytics dependency at a fresh in-memory sender."""
+    from app.analytics import MemoryAnalyticsSender, get_analytics_sender
+
+    sender = MemoryAnalyticsSender()
+    client.app.dependency_overrides[get_analytics_sender] = lambda: sender
+    return sender
+
+
+def test_register_fires_a_sign_up_event_with_consent(client):
+    from app.services.consent import CONSENT_COOKIE
+
+    sender = _wire_memory_analytics(client)
+    client.cookies.set(CONSENT_COOKIE, "accepted")
+
+    client.post(
+        "/register",
+        data={"email": "consintio@example.com", "password": PASSWORD, "full_name": "C"},
+    )
+
+    assert len(sender.sent) == 1
+    assert sender.sent[0].name == "sign_up"
+    assert sender.sent[0].email == "consintio@example.com"
+
+
+def test_register_fires_no_event_without_consent(client):
+    sender = _wire_memory_analytics(client)
+
+    client.post(
+        "/register",
+        data={"email": "sinconsentir@example.com", "password": PASSWORD, "full_name": "C"},
+    )
+
+    assert sender.sent == []
+
+
+def test_login_fires_a_login_event_only_with_consent(client, user):
+    from app.services.consent import CONSENT_COOKIE
+
+    sender = _wire_memory_analytics(client)
+
+    client.post("/login", data={"email": user.email, "password": PASSWORD})
+    assert sender.sent == []
+
+    client.cookies.set(CONSENT_COOKIE, "accepted")
+    client.post("/login", data={"email": user.email, "password": PASSWORD})
+
+    assert len(sender.sent) == 1
+    assert sender.sent[0].name == "login"

@@ -44,16 +44,17 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] `EmailSender` como Protocol; adaptadores console, Resend y SMTP
 - [x] Plantillas de correo editables
 
-## v0.3.0 — Analítica y SEO  *(siguiente)*
+## v0.3.0 — Analítica y SEO  *(publicada — 2026-09-07)*
 
-- [ ] GTM condicionado a `GTM_ID`
-- [ ] GA4 Measurement Protocol server-side
-- [ ] Meta Conversions API server-side con hashing de PII
-- [ ] `sitemap.xml` dinámico desde la base de datos + `robots.txt`
-- [ ] Verificación de Search Console
-- [ ] Banner de consentimiento con HTMX, sin librerías
+- [x] GTM condicionado a `GTM_ID`
+- [x] GA4 Measurement Protocol server-side
+- [x] Meta Conversions API server-side con hashing de PII
+- [x] `sitemap.xml` dinámico desde la base de datos + `robots.txt`
+- [x] Verificación de Search Console
+- [x] Banner de consentimiento con HTMX, sin librerías
+- [x] ADRs 0011–0012
 
-## v1.0.0 — Listo para publicar
+## v1.0.0 — Listo para publicar  *(siguiente)*
 
 - [ ] Documentación completa y README en inglés
 - [ ] Proyecto de ejemplo con un CRUD completo

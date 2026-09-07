@@ -14,11 +14,12 @@ from __future__ import annotations
 import datetime as dt
 from typing import Annotated
 
-from fastapi import APIRouter, Form, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
-from app.deps import AppSettings, DbSession, Emailer, OptionalUser
+from app.analytics import AnalyticsEvent
+from app.deps import Analytics, AppSettings, DbSession, Emailer, OptionalUser
 from app.exceptions import ConflictError, InvalidCredentialsError, InvalidTokenError
 from app.schemas import form_errors
 from app.schemas.auth import ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
@@ -29,6 +30,7 @@ from app.security import (
     unsign_session_token,
 )
 from app.services.auth import AuthService
+from app.services.consent import has_marketing_consent
 from app.services.rate_limit import (
     RateLimit,
     RateLimiter,
@@ -66,6 +68,30 @@ def _client_fingerprint(request: Request) -> tuple[str, str]:
     return ip, request.headers.get("user-agent", "")
 
 
+def _track_signal(
+    background_tasks: BackgroundTasks,
+    analytics: Analytics,
+    request: Request,
+    *,
+    name: str,
+    email: str,
+    ip: str,
+    user_agent: str,
+) -> None:
+    """Fire an analytics event in the background, only with consent.
+
+    `add_task` runs after the response is sent, so a slow or unreachable
+    analytics endpoint can never add latency to a login or a signup. Skipped
+    entirely without consent — see `app.services.consent`.
+    """
+    if not has_marketing_consent(request):
+        return
+    background_tasks.add_task(
+        analytics.track,
+        AnalyticsEvent(name=name, email=email, ip_address=ip, user_agent=user_agent),
+    )
+
+
 # --- Login ------------------------------------------------------------------
 
 
@@ -86,6 +112,8 @@ def login(
     request: Request,
     db: DbSession,
     settings: AppSettings,
+    background_tasks: BackgroundTasks,
+    analytics: Analytics,
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
     next_url: Annotated[str, Form(alias="next")] = "/",
@@ -145,6 +173,15 @@ def login(
     # The attempts that led here were somebody remembering their own password.
     limiter.reset(buckets)
     token = service.start_session(user, ip_address=ip, user_agent=user_agent)
+    _track_signal(
+        background_tasks,
+        analytics,
+        request,
+        name="login",
+        email=user.email,
+        ip=ip,
+        user_agent=user_agent,
+    )
 
     response = RedirectResponse(target, status_code=SEE_OTHER)
     set_session_cookie(response, token, settings)
@@ -196,6 +233,8 @@ def register(
     request: Request,
     db: DbSession,
     settings: AppSettings,
+    background_tasks: BackgroundTasks,
+    analytics: Analytics,
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
     full_name: Annotated[str, Form()] = "",
@@ -231,6 +270,15 @@ def register(
 
     ip, user_agent = _client_fingerprint(request)
     token = service.start_session(user, ip_address=ip, user_agent=user_agent)
+    _track_signal(
+        background_tasks,
+        analytics,
+        request,
+        name="sign_up",
+        email=user.email,
+        ip=ip,
+        user_agent=user_agent,
+    )
 
     response = RedirectResponse("/", status_code=SEE_OTHER)
     set_session_cookie(response, token, settings)

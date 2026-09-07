@@ -105,7 +105,7 @@ En desarrollo activo. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
 |---|---|---|
 | v0.1.0 | Esqueleto: Docker, SSR, componentes, capa IA, CI | Publicada |
 | v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Publicada |
-| v0.3.0 | Analítica server-side y SEO | Pendiente |
+| v0.3.0 | Analítica server-side y SEO | Publicada |
 | v1.0.0 | Documentación, ejemplo completo, release público | Pendiente |
 
 ## Documentación

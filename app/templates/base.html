@@ -36,6 +36,20 @@
      de query (utm_*, etc.), que es lo normal en campañas de marketing. #}
   <link rel="canonical" href="{{ settings.base_url }}{{ request.url.path }}">
 
+  {% if settings.gsc_verification %}
+  <meta name="google-site-verification" content="{{ settings.gsc_verification }}">
+  {% endif %}
+
+  {# GTM solo se imprime con GTM_ID configurado Y consentimiento aceptado — ver
+     app/services/consent.py. Sin consentimiento, ni el contenedor se carga. #}
+  {% if settings.gtm_id and consent == "accepted" %}
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','{{ settings.gtm_id }}');</script>
+  {% endif %}
+
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">
   <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 
@@ -54,6 +68,11 @@
   class="bg-background text-foreground min-h-full antialiased {% block body_class %}{% endblock %}"
   hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
 
+  {% if settings.gtm_id and consent == "accepted" %}
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ settings.gtm_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  {% endif %}
+
   {% block layout %}
     {% include "partials/header.html" %}
 
@@ -67,6 +86,10 @@
   {# Destino de los toasts de Basecoat. Los fragmentos HTMX pueden inyectar
      mensajes aquí con hx-swap-oob. #}
   <div id="toaster" class="toaster"></div>
+
+  {% if consent is none %}
+    {% include "partials/cookie_consent.html" %}
+  {% endif %}
 
   {% block scripts %}{% endblock %}
 </body>

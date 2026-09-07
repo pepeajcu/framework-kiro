@@ -25,7 +25,7 @@ from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.csrf import CsrfCookieMiddleware, csrf_guard
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import auth, health, pages
+from app.routers import auth, consent, health, pages, seo
 from app.templating import STATIC_DIR, render
 
 
@@ -64,6 +64,8 @@ def create_app(settings: Settings | None = None, *, enforce_csrf: bool = True) -
 
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(consent.router)
+    app.include_router(seo.router)
     app.include_router(pages.router)
 
     register_error_handlers(app)

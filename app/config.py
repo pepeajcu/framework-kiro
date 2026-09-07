@@ -104,6 +104,18 @@ class Settings(BaseSettings):
     # --- Observability ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
+    # --- Analytics & SEO ---
+    # Every field here defaults to empty, which turns its integration off: no
+    # script tag, no outgoing request. Nothing to clean up in a project that
+    # never fills these in.
+    gtm_id: str = ""
+    ga4_measurement_id: str = ""
+    ga4_api_secret: str = ""
+    meta_pixel_id: str = ""
+    meta_capi_token: str = ""
+    # Content of Search Console's HTML-tag verification method.
+    gsc_verification: str = ""
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def is_production(self) -> bool:
@@ -139,6 +151,29 @@ class Settings(BaseSettings):
             raise ValueError("EMAIL_PROVIDER=resend requires RESEND_API_KEY")
         if self.email_provider is EmailProvider.SMTP and not self.smtp_host:
             raise ValueError("EMAIL_PROVIDER=smtp requires SMTP_HOST")
+        return self
+
+    @model_validator(mode="after")
+    def _check_analytics_pairs_are_complete(self) -> Settings:
+        """Refuse to deploy with half of a provider's credentials filled in.
+
+        Unlike email, GA4 and Meta are optional — both fields empty is a valid,
+        common state. But one filled in without the other is not a choice
+        anyone made on purpose; it is a paste that got cut short, and it fails
+        silently: the integration looks configured and every event vanishes.
+        Only enforced in production, same reasoning as the email check above.
+        """
+        if not self.is_production:
+            return self
+
+        if bool(self.ga4_measurement_id) != bool(self.ga4_api_secret):
+            raise ValueError(
+                "GA4_MEASUREMENT_ID and GA4_API_SECRET must be set together, or not at all"
+            )
+        if bool(self.meta_pixel_id) != bool(self.meta_capi_token):
+            raise ValueError(
+                "META_PIXEL_ID and META_CAPI_TOKEN must be set together, or not at all"
+            )
         return self
 
 

@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from app.analytics import AnalyticsSender, get_analytics_sender
 from app.config import Settings, get_settings
 from app.db import get_db
 from app.emails import EmailSender, get_email_sender
@@ -30,6 +31,12 @@ Emailer = Annotated[EmailSender, Depends(get_email_sender)]
 """The configured transactional email sender.
 
 Injected rather than imported so a test can swap it for `MemoryEmailSender`
+through `app.dependency_overrides`."""
+
+Analytics = Annotated[AnalyticsSender, Depends(get_analytics_sender)]
+"""The configured analytics sender(s) — GA4, Meta, both, or neither.
+
+Injected rather than imported so a test can swap it for `MemoryAnalyticsSender`
 through `app.dependency_overrides`."""
 
 

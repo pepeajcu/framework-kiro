@@ -1,0 +1,44 @@
+{#
+  Banner de consentimiento de cookies. Se incluye desde base.html y se oculta
+  solo con `{% if consent is none %}` alrededor del include — sin esa cookie,
+  "consent" no vale "accepted" ni "rejected" y el banner se muestra.
+
+  Los botones son hx-post normales: base.html ya manda el token CSRF en
+  hx-headers, así que no hace falta csrf_field aquí. La respuesta llega vacía
+  y hx-swap="outerHTML" hace que el propio banner desaparezca del DOM.
+#}
+<div
+  data-cookie-banner
+  class="border-border bg-background fixed inset-x-0 bottom-0 z-50 border-t px-4 py-4 shadow-lg"
+>
+  <div class="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+    <p class="text-muted-foreground text-sm">
+      Usamos cookies para medir el uso del sitio. Puedes aceptarlas o rechazarlas;
+      la navegación funciona igual en ambos casos.
+    </p>
+    <div class="flex shrink-0 gap-2">
+      <button
+        class="btn"
+        data-variant="outline"
+        data-size="sm"
+        hx-post="/consent"
+        hx-vals='{"decision": "rejected"}'
+        hx-target="closest [data-cookie-banner]"
+        hx-swap="outerHTML"
+      >
+        Rechazar
+      </button>
+      <button
+        class="btn"
+        data-variant="primary"
+        data-size="sm"
+        hx-post="/consent"
+        hx-vals='{"decision": "accepted"}'
+        hx-target="closest [data-cookie-banner]"
+        hx-swap="outerHTML"
+      >
+        Aceptar
+      </button>
+    </div>
+  </div>
+</div>
