@@ -2,8 +2,14 @@
    sin tocar base.html. #}
 <header class="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
   <nav class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-    <a href="/" class="text-foreground text-base font-semibold tracking-tight">
-      {{ settings.app_name }}
+    {# El logo vive en app/static/brand/ (make logo src=...). Sin logo, solo el
+       nombre. Altura fija: así el layout no salta al cargar la imagen. #}
+    {% set logo = brand_logo() %}
+    <a href="/" class="text-foreground flex items-center gap-2.5 text-base font-semibold tracking-tight">
+      {% if logo %}
+        <img src="{{ logo }}" alt="" width="32" height="32" class="size-8 shrink-0 object-contain">
+      {% endif %}
+      <span>{{ settings.app_name }}</span>
     </a>
 
     <div class="flex items-center gap-2">

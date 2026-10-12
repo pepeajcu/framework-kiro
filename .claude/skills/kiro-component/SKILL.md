@@ -66,6 +66,9 @@ warns you.
 
 Open the macro file to see its parameters — each one documents them at the top.
 
+**Components give structure; `kiro-design` gives identity.** Before styling
+anything beyond the defaults, read `DESIGN.md` and the `kiro-design` skill.
+
 ## Finding the right class
 
 Do not guess. Grep the vendored source:

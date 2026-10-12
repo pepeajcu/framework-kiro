@@ -652,9 +652,10 @@ final_message() {
   printf '  %sSiguiente paso%s\n' "$C_BOLD" "$C_RESET"
   printf '    Abre Claude Code u OpenCode en esta carpeta y corre:\n'
   printf '      %s/kiro-init%s\n' "$C_BOLD" "$C_RESET"
-  printf '    Te entrevista para llenar %sPROJECT.md%s y te explica cómo pedir\n' "$C_BOLD" "$C_RESET"
+  printf '    Te entrevista para llenar %sPROJECT.md%s (tu dominio) y %sDESIGN.md%s\n' "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf '    (colores de marca, estilo, logo), y te explica cómo pedir\n'
   printf '    features a partir de ahí — es lo que el agente lee para no\n'
-  printf '    inventarse tu dominio.\n\n'
+  printf '    inventarse tu dominio ni parecerse a todos los demás.\n\n'
 }
 
 main() {

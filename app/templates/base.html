@@ -51,7 +51,13 @@
   {% endif %}
 
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+  {# Con logo de marca, el favicon es el logo; sin él, el de Kiro. #}
+  {% set logo = brand_logo() %}
+  {% if logo %}
+  <link rel="icon" href="{{ logo }}" type="{{ 'image/svg+xml' if '/logo.svg' in logo else 'image/png' }}">
+  {% else %}
   <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+  {% endif %}
 
   {# HTMX en el <head> con defer: está disponible antes de que el usuario pueda
      interactuar, sin bloquear el primer render. #}

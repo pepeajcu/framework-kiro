@@ -10,7 +10,7 @@ APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
 .PHONY: help dev up down logs ps shell migrate revision migrations-check seed \
-	css css-watch lint format types test cov audit check upgrade clean
+	css css-watch logo brand-colors lint format types test cov audit check upgrade clean
 
 # --- Ayuda ------------------------------------------------------------------
 
@@ -57,6 +57,15 @@ seed:  ## Cargar los datos iniciales
 
 css:  ## Compilar Tailwind a app/static/css/app.css
 	uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
+
+logo:  ## Importar el logo de la marca  (make logo src=./logo.svg  o una URL; SVG o PNG 1:1)
+	@test -n "$(src)" || (echo "error: falta src. Uso: make logo src=./logo.svg" && exit 1)
+	uv run python -m scripts.brand logo "$(src)"
+
+brand-colors:  ## Aplicar el color de marca  (make brand-colors primary="#0F766E" [radius=0.5rem])
+	@test -n "$(primary)" || (echo "error: falta primary. Uso: make brand-colors primary=\"#0F766E\"" && exit 1)
+	uv run python -m scripts.brand colors --primary "$(primary)" $(if $(radius),--radius "$(radius)")
+	$(MAKE) css
 
 css-watch:  ## Recompilar el CSS al vuelo mientras desarrollas
 	uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --watch

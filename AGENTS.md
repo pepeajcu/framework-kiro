@@ -7,6 +7,10 @@ Codex and Cursor all read this file (Claude Code via `CLAUDE.md`, which imports 
 entities, rules, decisions already made. This file tells you *how* to build;
 `PROJECT.md` tells you *what*.
 
+**Read `DESIGN.md` before writing any template.** It holds the brand: colours,
+style, the three design dials, the logo. Load the `kiro-design` skill with it.
+Without them every Kiro project looks the same.
+
 The architecture below is already built and working. Do not redesign it, do not
 propose alternatives, do not spend tokens re-deriving it. Build features on top.
 
@@ -40,6 +44,8 @@ make test       # tests only
 make revision m="add providers table"   # generate a migration from the models
 make migrate    # apply migrations
 make css        # rebuild Tailwind after editing templates
+make logo src=./logo.svg                  # set the brand logo (path or URL)
+make brand-colors primary="#0F766E"       # apply the brand colour as tokens
 ```
 
 Always run `make check` before reporting work as done. It is what CI runs.
@@ -248,6 +254,13 @@ Most components are CSS classes only. Nine complex ones ship Jinja macros in
 The handler returns a `partials/` template — a fragment, not a document that
 extends `base.html`. See `app/routers/pages.py:demo_ping` for a working example.
 
+**Identity lives in tokens, not in templates.** Brand colour and radius are set
+once with `make brand-colors primary="#hex"`, the logo with
+`make logo src=<path|url>` (SVG, or PNG 1:1, stored in `app/static/brand/`).
+Templates use `bg-primary`, `text-muted-foreground`… and `brand_logo()`; never a
+hard-coded hex or a logo file name. Design rules (anti-slop, dials, fonts without
+CDN) are in `.claude/skills/kiro-design/SKILL.md`.
+
 After editing any template, run `make css`: Tailwind scans templates for class
 names and drops anything it does not find.
 
@@ -269,6 +282,8 @@ names and drops anything it does not find.
 
 1. `PROJECT.md` — the domain. If it is still full of TODOs, ask the user to
    fill it in rather than inventing entities.
-2. `docs/decisions/` — why the stack is what it is.
-3. `app/routers/pages.py` and `app/templates/pages/home.html` — a working
+2. `DESIGN.md` — the brand. If it still has TODOs, ask the user to run
+   `/kiro-init` rather than inventing a visual identity.
+3. `docs/decisions/` — why the stack is what it is.
+4. `app/routers/pages.py` and `app/templates/pages/home.html` — a working
    end-to-end example of the whole pattern.

@@ -21,3 +21,4 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0010](0010-cabeceras-de-seguridad-y-csp.md) | Cabeceras de seguridad y CSP con `'unsafe-inline'` | Aceptada |
 | [0011](0011-consentimiento-y-analitica.md) | Consentimiento por cookie y analítica server-side sin bloquear al usuario | Aceptada |
 | [0012](0012-registro-de-sitemap.md) | Sitemap por registro de proveedores, no por consulta a un modelo | Aceptada |
+| [0013](0013-identidad-visual-con-taste-skill.md) | Identidad visual: `DESIGN.md`, tokens de marca y taste-skill | Aceptada |

@@ -15,6 +15,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.branding import find_logo, logo_path_relative_to_static
 from app.config import get_settings
 from app.services.consent import CONSENT_COOKIE
 
@@ -51,9 +52,21 @@ def now_year() -> int:
     return dt.datetime.now(tz=dt.UTC).year
 
 
+def brand_logo() -> str | None:
+    """URL of the project's logo, or None if `app/static/brand/` has none.
+
+    Templates call this instead of hard-coding a file name, so a project with no
+    logo renders text only and one with `logo.svg` or `logo.png` shows it, with
+    no template change. Set it with `make logo src=...`.
+    """
+    logo = find_logo()
+    return asset(logo_path_relative_to_static(logo)) if logo else None
+
+
 templates.env.globals["settings"] = get_settings()
 templates.env.globals["asset"] = asset
 templates.env.globals["now_year"] = now_year
+templates.env.globals["brand_logo"] = brand_logo
 
 
 def is_htmx(request: Request) -> bool:

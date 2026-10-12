@@ -11,6 +11,22 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [Sin publicar]
+
+### Añadido
+
+- `[SEGURO]` **Identidad visual: `DESIGN.md` + skill `kiro-design`**, basada en
+  [taste-skill](https://github.com/Leonxlnx/taste-skill) (MIT). `/kiro-init`
+  entrevista por colores de marca, estilo (minimalista, suave-premium,
+  brutalista, institucional, expresivo, panel-de-datos) y logo, lo escribe en
+  `DESIGN.md` y lo aplica. Ver ADR-0013.
+- `[SEGURO]` `make logo src=<ruta|url>`: importa el logo (SVG, o PNG cuadrado
+  1:1) a `app/static/brand/`, rechazando SVG con scripts. La cabecera y el
+  favicon lo usan vía `brand_logo()`; sin logo, solo el nombre.
+- `[SEGURO]` `make brand-colors primary="#hex"`: deriva `--primary`,
+  `--primary-foreground` y `--ring` (claro y oscuro) y avisa si el contraste
+  del botón baja de 4.5:1.
+
 ## [1.0.0] — 2026-09-07 · Listo para publicar
 
 Cierra el roadmap inicial. Nada de lo que sigue cambia contratos existentes:
