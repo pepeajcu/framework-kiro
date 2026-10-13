@@ -1,0 +1,14 @@
+{# Arquetipo industrial-rule: barra plana y sin desenfoque, con una regla gruesa
+   debajo y el nombre en una celda propia, como la cabecera de una imprenta. Pide
+   un tema sin esquinas redondeadas (lyra, sera) y `radius = "0"`. #}
+{% set mark_class = "font-mono text-sm font-semibold tracking-widest uppercase" %}
+<header class="bg-background border-foreground sticky top-0 z-40 border-b-2">
+  <nav aria-label="Principal" class="mx-auto flex w-full {{ page_width | default('max-w-5xl') }} items-stretch justify-between">
+    <div class="border-foreground flex items-center border-r-2 px-4 py-3">
+      {% include "partials/brand_mark.html" %}
+    </div>
+    <div class="flex items-center gap-2 px-4 py-3 [&_.btn]:tracking-wider [&_.btn]:uppercase">
+      {% include "partials/nav_auth.html" %}
+    </div>
+  </nav>
+</header>

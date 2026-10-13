@@ -10,7 +10,8 @@ APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
 .PHONY: help dev up down logs ps shell migrate revision migrations-check seed \
-	css css-watch logo brand-colors lint format types test cov audit check upgrade clean
+	css css-watch logo brand-colors font motion design design-build design-watch design-init \
+	design-set design-check lint format types test cov audit check upgrade clean
 
 # --- Ayuda ------------------------------------------------------------------
 
@@ -62,13 +63,55 @@ logo:  ## Importar el logo de la marca  (make logo src=./logo.svg  o una URL; SV
 	@test -n "$(src)" || (echo "error: falta src. Uso: make logo src=./logo.svg" && exit 1)
 	uv run python -m scripts.brand logo "$(src)"
 
-brand-colors:  ## Aplicar el color de marca  (make brand-colors primary="#0F766E" [radius=0.5rem])
+brand-colors:  ## Aplicar el color de marca  (make brand-colors primary="#0F766E" [radius=0.5rem] [neutral=warm] [surface=cream] [secondary="#hex"])
 	@test -n "$(primary)" || (echo "error: falta primary. Uso: make brand-colors primary=\"#0F766E\"" && exit 1)
-	uv run python -m scripts.brand colors --primary "$(primary)" $(if $(radius),--radius "$(radius)")
+	uv run python -m scripts.brand colors --primary "$(primary)" $(if $(radius),--radius "$(radius)") $(if $(neutral),--neutral "$(neutral)") $(if $(surface),--surface "$(surface)") $(if $(secondary),--secondary "$(secondary)")
+	$(MAKE) css
+
+font:  ## Añadir una fuente local  (make font name="Fraunces" weights="400,700" role=display)
+	@test -n "$(name)" -a -n "$(role)" || (echo "error: faltan name y role. Uso: make font name=\"Fraunces\" weights=\"400,700\" role=display" && exit 1)
+	uv run python -m scripts.font --name "$(name)" --weights "$(or $(weights),400)" --role "$(role)" $(if $(fallback),--fallback "$(fallback)")
 	$(MAKE) css
 
 css-watch:  ## Recompilar el CSS al vuelo mientras desarrollas
 	uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --watch
+
+motion:  ## Vendorizar la librería de un nivel de motion  (make motion level=motion|gsap)
+	@test "$(level)" = "motion" -o "$(level)" = "gsap" || (echo "error: level debe ser motion o gsap. Uso: make motion level=gsap" && exit 1)
+	uv run python -m scripts.motion --level "$(level)"
+
+# --- Motor de diseño ---------------------------------------------------------
+#
+# design.toml es el contrato de la identidad; `make design build` lo compila a
+# CSS, fuentes y motion. Se puede escribir `make design build` o `make design-build`.
+
+DESIGN_WORDS := build watch init set check
+ifneq ($(filter design,$(MAKECMDGOALS)),)
+# `make design build`: la segunda palabra es el subcomando, no una meta aparte.
+$(filter $(DESIGN_WORDS),$(MAKECMDGOALS)): ; @:
+endif
+
+design:  ## Motor de diseño: make design build | watch | init | set | check
+	@$(MAKE) --no-print-directory design-$(or $(firstword $(filter $(DESIGN_WORDS),$(MAKECMDGOALS))),build)
+
+design-build:  ## Aplicar design.toml: CSS, fuentes y motion. Idempotente
+	uv run python -m scripts.design build
+	$(MAKE) css
+
+design-watch:  ## Recompilar al cambiar design.toml (junto a `make css-watch`)
+	uv run python -m scripts.design watch
+
+design-init:  ## Crear design.toml desde un estilo  (make design-init preset=brutalista [primary="#DC2626"] [force=1])
+	uv run python -m scripts.design init $(if $(preset),--preset "$(preset)") $(if $(primary),--primary "$(primary)") $(if $(force),--force)
+	$(MAKE) css
+
+design-set:  ## Cambiar valores del contrato  (make design-set v="basecoat.theme=rhea motion.level=6")
+	@test -n "$(v)" || (echo "error: falta v. Uso: make design-set v=\"motion.level=6\"" && exit 1)
+	uv run python -m scripts.design set $(v)
+	$(MAKE) css
+
+design-check:  ## Validar design.toml contra el proyecto (no forma parte de `make check`)
+	uv run python -m scripts.design check $(if $(allow_defaults),--allow-defaults)
 
 # --- Calidad ----------------------------------------------------------------
 

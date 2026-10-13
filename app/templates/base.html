@@ -1,19 +1,31 @@
 {#
   Plantilla raíz. Toda página del proyecto hereda de aquí.
 
+  No se extiende directamente: las páginas heredan de un layout, que decide el
+  ancho y el ritmo de la página (ver app/templates/layouts/).
+    layouts/app.html       contenedor centrado, para pantallas privadas y formularios
+    layouts/landing.html   a sangre, para portadas y landings; carga el motion
+
   Bloques disponibles:
     title          título de la pestaña (obligatorio sobreescribirlo)
     description    meta description — importante para SEO
     head_extra     <link>/<meta> adicionales de una página concreta
     body_class     clases del <body>
+    header         la cabecera (por defecto, la que elige design.toml)
+    main           el contenedor del contenido: lo define el layout
     content        el contenido de la página
+    footer         el pie
     scripts        <script> al final del body
+
+  Variables que una página o layout puede fijar al principio con {% set %}:
+    page_width     ancho del contenedor de cabecera, contenido y pie (max-w-5xl)
+    use_motion     true para cargar los scripts de motion (lo hace landing.html)
 
   Regla de arquitectura: esta plantilla se renderiza SIEMPRE en el servidor.
   Ninguna página de Kiro depende de JavaScript para mostrar su contenido.
 #}
 <!doctype html>
-<html lang="{% block html_lang %}es{% endblock %}" class="h-full">
+<html lang="{% block html_lang %}es{% endblock %}" class="h-full{% if design.html_class %} {{ design.html_class }}{% endif %}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -50,6 +62,20 @@
   })(window,document,'script','dataLayer','{{ settings.gtm_id }}');</script>
   {% endif %}
 
+  {# Identidad: la fuente del texto se precarga para que no parpadee en la de
+     reserva. Qué fuentes hay lo decide design.toml (make design build). #}
+  {% for url in design.preload_fonts %}
+  <link rel="preload" href="{{ url }}" as="font" type="font/woff2" crossorigin>
+  {% endfor %}
+
+  {# El script de motion va síncrono y antes del CSS: pone la clase `js-motion`
+     antes del primer pintado. Sin él (o sin JS) todo el contenido se ve. #}
+  {% if use_motion %}
+    {% for path in design.motion_head %}
+  <script src="{{ asset(path) }}"></script>
+    {% endfor %}
+  {% endif %}
+
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">
   {# Con logo de marca, el favicon es el logo; sin él, el de Kiro. #}
   {% set logo = brand_logo() %}
@@ -80,13 +106,13 @@
   {% endif %}
 
   {% block layout %}
-    {% include "partials/header.html" %}
+    {% block header %}{% include "partials/header.html" %}{% endblock %}
 
-    <main id="main" class="mx-auto w-full max-w-5xl px-4 py-10">
-      {% block content %}{% endblock %}
-    </main>
+    {% block main %}
+    <main id="main">{% block content %}{% endblock %}</main>
+    {% endblock %}
 
-    {% include "partials/footer.html" %}
+    {% block footer %}{% include "partials/footer.html" %}{% endblock %}
   {% endblock %}
 
   {# Destino de los toasts de Basecoat. Los fragmentos HTMX pueden inyectar
@@ -95,6 +121,14 @@
 
   {% if consent is none %}
     {% include "partials/cookie_consent.html" %}
+  {% endif %}
+
+  {# Librerías y adaptadores del nivel de motion, en orden: la librería antes
+     que su adaptador. Solo si el layout pidió motion. #}
+  {% if use_motion %}
+    {% for path in design.motion_body %}
+  <script src="{{ asset(path) }}" defer></script>
+    {% endfor %}
   {% endif %}
 
   {% block scripts %}{% endblock %}

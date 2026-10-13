@@ -1,0 +1,27 @@
+{#
+  Layout de landing: el contenido va a sangre y cada sección decide su propio
+  ancho, fondo y ritmo. Es donde vive la identidad de la portada.
+
+  Uso:    {% extends "layouts/landing.html" %}  y rellena {% block content %}
+          con <section>s. Cada sección pone su contenedor:
+              <section class="py-24">
+                <div class="mx-auto max-w-6xl px-4">…</div>
+              </section>
+          El `px-4` va DENTRO del contenedor, igual que en la cabecera y el pie:
+          así todo alinea en el mismo borde.
+  Motion: este layout pide los scripts del nivel de `[motion] level` en
+          design.toml. En la página basta con atributos: data-motion="reveal".
+          Si sobreescribes el bloque `scripts`, llama a {{ super() }}.
+
+  Para pantallas privadas y formularios usa layouts/app.html.
+#}
+{% extends "base.html" %}
+
+{# Una landing es ancha: cabecera y pie alinean con las secciones, no con el
+   contenedor estrecho de una pantalla de aplicación. #}
+{% set page_width = page_width | default("max-w-6xl") %}
+{% set use_motion = true %}
+
+{% block main %}
+<main id="main">{% block content %}{% endblock %}</main>
+{% endblock %}

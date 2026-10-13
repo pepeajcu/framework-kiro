@@ -7,9 +7,15 @@
 
 @import "tailwindcss";
 
-/* Tema de Basecoat. Cámbialo por otro y recompila:
- * vega | nova | maia | lyra | mira | luma | sera | rhea */
+/* Tema de Basecoat. Lo elige `[basecoat] theme` en design.toml y lo escribe
+ * `make design build` (vega | nova | maia | lyra | mira | luma | sera | rhea):
+ * no cambies la línea a mano, o el siguiente build la devolverá al tema del
+ * contrato. */
 @import "./vendor/basecoat/basecoat-vega.css";
+
+/* Movimiento declarativo (app/static/js/motion.js). Sus estados ocultos solo
+ * existen bajo `.js-motion`, la clase que pone el propio script. */
+@import "./motion.css";
 
 /* Dónde buscar clases de Tailwind. Sin esto, Tailwind no ve las plantillas
  * Jinja y elimina como "no usadas" las clases que sí se usan. */
@@ -19,8 +25,14 @@
 /* ---------------------------------------------------------------------------
  * Personalización del proyecto
  *
- * Sobreescribe aquí, NUNCA editando app/static/css/vendor/: esos archivos se
- * reemplazan al actualizar Basecoat (ver docs/vendor.md).
+ * La identidad (paleta, radio, fuentes) la compila `make design build` desde
+ * design.toml, en bloques delimitados por `kiro:<nombre>:start` / `:end`
+ * (ver docs/decisions/0014-motor-de-diseno.md). Esos bloques se reescriben
+ * enteros en cada build: lo que escribas dentro se pierde.
+ *
+ * Tus propios ajustes van FUERA de los bloques, aquí abajo. Sobreescribe aquí,
+ * NUNCA editando app/static/css/vendor/: esos archivos se reemplazan al
+ * actualizar Basecoat (ver docs/vendor.md).
  * ------------------------------------------------------------------------ */
 
 /* COLORES Y RADIOS -> se redefinen en :root, NO dentro de @theme.

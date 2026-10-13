@@ -1,5 +1,5 @@
 ---
-description: First command to run in a freshly generated Kiro project — fills PROJECT.md and DESIGN.md (brand, style, logo) and explains the two ways to develop from here
+description: First command to run in a freshly generated Kiro project — fills PROJECT.md and DESIGN.md (brand, three contrasted design directions, signature) and design.toml, and explains the two ways to develop from here
 ---
 
 # Arranque del proyecto
@@ -25,47 +25,97 @@ antes de pedir cualquier feature.
    Si `PROJECT.md` ya está lleno (sin `TODO` pendientes), no vuelvas a
    preguntar: dilo brevemente y pasa al punto 2.
 
-2. **Identidad visual.** Lee `DESIGN.md`. Si todavía tiene `TODO`, entrevista
-   al usuario para llenarlo, también de forma conversacional y en un solo
-   bloque de preguntas cortas (no una por mensaje). El método está en
-   `.claude/skills/kiro-design/SKILL.md`; léelo antes de preguntar. Cubre:
+2. **Identidad visual.** Sin esto, todos los proyectos de Kiro salen iguales:
+   mismo gris, misma cabecera, mismas tarjetas. Lee
+   `.claude/skills/kiro-design/SKILL.md`, `DESIGN.md` y `design.toml`. Si
+   `DESIGN.md` todavía tiene `TODO` (o `make design-check` dice que `design.toml`
+   sigue en los valores por defecto), hazlo en estas cuatro fases.
 
-   - **Colores de negocio / marca.** ¿Tiene un color principal (hex)? ¿Uno
-     secundario? Si no tiene ninguno, propón dos o tres paletas coherentes con
-     el sector de `PROJECT.md` (un acento sobre neutros, nunca el morado por
-     defecto) y deja que elija.
-   - **Estilo.** Ofrece las opciones de `kiro-design` con una línea cada una y
-     recomienda una según el público: `minimalista` (Notion/Linear),
-     `suave-premium` (calmado, caro), `brutalista` (rejilla dura, tipografía
-     enorme), `institucional` (sobrio, de confianza), `expresivo` (agencia,
-     lanzamiento) o `panel-de-datos` (back-office denso). Puede mezclar
-     o describir el suyo. De ahí salen los tres diales (variance / motion /
-     density).
+   ### 2.1 Pregunta lo que solo el usuario sabe
+
+   Un único bloque de preguntas cortas (no una por mensaje):
+
+   - **Marca.** ¿Tiene un color principal (hex)? ¿Uno secundario? Si no tiene
+     ninguno no inventes: lo propondrás en las direcciones.
    - **Referencias.** Webs o marcas que le gustan, y qué NO quiere que parezca.
-   - **Modo oscuro.** Sí, no, o solo oscuro.
-   - **Logo.** ¿Tiene? Pídele una ruta de archivo o una URL (SVG preferido; PNG
-     solo si es cuadrado 1:1). Si no tiene, sigue: la cabecera mostrará solo el
-     nombre y se puede añadir después.
+   - **Público y tono** (sale de `PROJECT.md`; confírmalo, no lo preguntes de
+     nuevo si ya está).
+   - **Modo oscuro.** Claro, solo oscuro (`surface = "dark"`), o crema/papel.
+     Las apps finales no ofrecen selector de tema: es una decisión del proyecto.
+   - **Logo.** Una ruta de archivo o una URL (SVG preferido; PNG solo si es
+     cuadrado 1:1). Si no tiene, sigue: la cabecera mostrará solo el nombre.
 
-   Después, **aplícalo tú**, no lo dejes como tarea:
+   ### 2.2 Propón TRES direcciones contrastadas
 
-   1. Escribe las respuestas en `DESIGN.md` respetando su estructura.
-   2. Con logo: `make logo src="<ruta o URL>"`. El script valida el formato
-      (rechaza SVG con scripts y PNG no cuadrados); si falla, cuéntale el motivo
-      y pídele otro archivo. Se guarda en `app/static/brand/` y la cabecera y el
-      favicon lo usan solos.
-   3. Con color primario: `make brand-colors primary="#hex"` (añade
-      `radius=...` si el estilo lo pide: recto `0`, suave `0.5rem`). Escribe los
-      tokens, compila el CSS y avisa si el contraste del botón queda por debajo
-      de 4.5:1; en ese caso propón un tono cercano que lo cumpla.
-   4. Si eligió fuentes propias, vendorízalas en `app/static/fonts/` (nunca CDN)
-      como describe `kiro-design`.
-   5. Muéstrale el resultado: arranca `make dev` y dile que abra la portada.
-      Pregunta si se siente bien antes de seguir; ajustar ahora es barato.
+   No una lista sesgada a lo sobrio: tres caminos que se noten distintos al
+   primer vistazo. Para cada una, en un bloque corto:
+
+   | | Segura | Atrevida | Experimental |
+   |---|---|---|---|
+   | Idea | La que no se equivoca para este público | La que se arriesga con criterio | La que el sector no espera |
+
+   Cada dirección lleva **todo** esto, con valores reales (no adjetivos):
+
+   - **Nombre y estilo base**, de la tabla de la skill (`minimalista`,
+     `suave-premium`, `brutalista`, `institucional`, `expresivo`,
+     `panel-de-datos`, `editorial`, `organico`, `neo-brutalista`, `retro-y2k`,
+     `oscuro-tecnologico`).
+   - **Paleta:** primario (hex), neutros (`warm`/`cool`/`pure`/`tinted`),
+     superficie (`light`/`cream`/`dark`), secundario si lo pide.
+   - **Tipografía:** una pareja de `references/type-pairings.md` (las únicas
+     instalables con `make font`).
+   - **Tema de Basecoat y cabecera** (los de la tabla, o cambia uno con motivo).
+   - **Arquetipos** de `references/archetypes.md`: un hero y dos secciones.
+   - **Firma visual:** 2-3 gestos *inventados para este proyecto*, concretos y
+     repetibles ("titulares serif a 12vw que se salen del borde"). No salen de
+     ningún catálogo.
+   - **Nivel de movimiento** (1-10) y por qué.
+
+   Reglas para que de verdad contrasten: que difieran en **al menos tres ejes**
+   (estilo, superficie, tipografía, estructura de cabecera) y que ninguna sea la
+   Basecoat gris con otro color de botón. Si el usuario dio un color de marca,
+   las tres lo respetan y cambian todo lo demás; si no, cada una propone el suyo
+   (nunca el morado por defecto).
+
+   Enséñaselas **vistas**, no solo descritas: arranca `make dev` y da el enlace
+   de `/_design?style=<estilo>&primary=<hex>&surface=<superficie>` de cada una
+   (el `#` del hex va como `%23`; solo previsualiza paleta y radio; fuentes y tema se ven al aplicar). Deja que
+   elija una, mezcle dos o describa la suya. Recomienda una y di por qué.
+
+   ### 2.3 Aplícalo tú, no lo dejes como tarea
+
+   Con la dirección elegida:
+
+   1. `make design-init preset=<estilo> primary="<hex>"` (parte de los valores del
+      estilo; añade `force=1` si `design.toml` ya tenía algo propio).
+   2. Ajusta lo que difiera del preset, con los atajos:
+      `make brand-colors primary=… neutral=… surface=… secondary=… radius=…`,
+      `make font name="…" weights="…" role=display|body|mono`,
+      `make design-set v="basecoat.theme=… structure.header=… motion.level=…"`.
+      Si el compilador rechaza un color por contraste (WCAG AA), te dará el hex
+      más cercano que sí se lee: úsalo y cuéntaselo al usuario.
+   3. Con logo: `make logo src="<ruta o URL>"`. El script rechaza SVG con
+      scripts y PNG no cuadrados; si falla, cuéntale el motivo y pide otro.
+   4. Escribe `DESIGN.md` entero, respetando su estructura: estilo, referencias,
+      los tres diales (el de movimiento = `motion.level`), la **firma visual**,
+      los arquetipos, color, forma y tipografía, y "lo que NO debe parecer".
+      No dejes ningún `TODO` salvo lo que el usuario dijo que no sabe.
+   5. Si la cabecera elegida es `custom`, reescribe
+      `app/templates/partials/headers/custom.html` según la firma (conservando
+      sus dos `include`: `brand_mark.html` y `nav_auth.html`).
+   6. Ejecuta `make design-check`: debe quedar sin errores. Un aviso de firma
+      visual o de dial distinto significa que `DESIGN.md` y `design.toml` se
+      contradicen: arréglalo.
+
+   ### 2.4 Enséñaselo y pregunta
+
+   Abre `/_design` y la portada (`/`) con `make dev`, y pregunta si se siente
+   bien **antes de seguir**: ajustar ahora es barato. La portada actual es
+   andamio a propósito; no la presentes como el diseño final.
 
    No inventes marca: si no sabe, deja la sección como pendiente y dilo. Si
-   `DESIGN.md` ya está lleno (sin `TODO`), no vuelvas a preguntar: dilo en una
-   línea y pasa al punto 3.
+   `DESIGN.md` ya está lleno (sin `TODO`) y `make design-check` pasa, no vuelvas
+   a preguntar: dilo en una línea y pasa al punto 3.
 
 3. Explica al usuario, en su idioma, que hay dos formas de pedir una feature
    a partir de ahora:
@@ -89,9 +139,12 @@ antes de pedir cualquier feature.
    - `/spec-tasks` — a partir del diseño aprobado, escribe la lista de tareas.
    - `/spec-build` — ejecuta la lista de tareas aprobada.
 
-4. Menciona también `/kiro-check`: corre lint + tipos + tests + migraciones
-   pendientes, para cuando se quiera una verificación completa.
+4. Menciona también, en una línea cada uno:
+   - `/kiro-check` — lint + tipos + tests + migraciones pendientes.
+   - `/kiro-design-review` — después de construir una página: captura a 375 y
+     1280 px, la compara con `DESIGN.md` y corrige hasta en dos pasadas.
+   - `/kiro-redesign` — para una app ya construida que se parece a todas.
 
 5. Cierra dejando claro que no hace falta memorizar nada de esto: el agente
-   sabe cuándo aplica cada camino, y `PROJECT.md` y `DESIGN.md` son lo único
-   que de verdad hay que mantener al día.
+   sabe cuándo aplica cada camino, y `PROJECT.md`, `DESIGN.md` y `design.toml`
+   son lo único que de verdad hay que mantener al día.

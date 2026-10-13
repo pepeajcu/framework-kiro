@@ -7,7 +7,7 @@
   GET normal, sin HTMX; el botón de borrar de cada nota sí es HTMX puro
   (hx-delete + hx-swap="outerHTML" sobre el propio <article>).
 #}
-{% extends "base.html" %}
+{% extends "layouts/app.html" %}
 {% from "components/form.html.jinja" import field, form_error %}
 
 {% block title %}Notas — {{ settings.app_name }}{% endblock %}

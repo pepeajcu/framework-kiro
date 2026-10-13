@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
 
+    # --- Design ---
+    # `/_design` shows the project's tokens, type scale and components, to
+    # iterate the identity before building features. It exists only outside
+    # production, whatever this says: see `design_preview_enabled`.
+    design_preview: bool = True
+
     # --- Observability ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
@@ -121,6 +127,12 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """True in any deployed environment. Gates secure cookies and hides docs."""
         return self.environment is not Environment.LOCAL
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def design_preview_enabled(self) -> bool:
+        """`/_design` is a development tool: never served from a deployed environment."""
+        return self.design_preview and not self.is_production
 
     @computed_field  # type: ignore[prop-decorator]
     @property

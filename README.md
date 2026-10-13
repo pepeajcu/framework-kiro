@@ -91,6 +91,13 @@ they are written down:
   robots.txt, Search Console verification.
 - **Hardened by default**: CSRF on every route, rate limits backed by
   PostgreSQL, security headers, and a request id on every log line.
+- **A design engine, so projects do not all look alike.** `design.toml`
+  compiles (`make design build`) into a complete light/dark palette with WCAG AA
+  *solved*, not merely checked; local fonts from Fontsource; one of eight
+  Basecoat themes; a header archetype; and a motion level from plain CSS up to
+  GSAP, driven by `data-motion` attributes. Eleven style presets, catalogues of
+  heroes and type pairings, a `/_design` page to judge the result, and
+  `/kiro-design-review` to look at it at 375 and 1280 px.
 - Full SSR with SEO baked in: canonical URLs, Open Graph, its own 404/500
   pages.
 - A typed repository layer that makes the "no query outside `repositories/`"
@@ -118,6 +125,8 @@ Published. See [`CHANGELOG.md`](CHANGELOG.md) and the
 | v0.2.0 | Auth, transactional email, CSRF and security | Published |
 | v0.3.0 | Server-side analytics and SEO | Published |
 | v1.0.0 | Documentation, complete example, public release | Published |
+| v1.1.0 | Visual identity: `DESIGN.md`, brand colour and logo | Published |
+| v1.2.0 | Design engine: `design.toml`, layouts, fonts, motion, `/_design` | Unreleased |
 
 ## Documentation
 

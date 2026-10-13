@@ -11,6 +11,91 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [Sin publicar]
+
+### 1.2.0 · Motor de diseño
+
+Cierra el problema que dejó la 1.1: la identidad solo cambiaba tres de unos treinta
+tokens y la estructura de la página era siempre la misma, así que dos proyectos
+con intenciones distintas salían casi iguales. Ver
+[ADR-0014](docs/decisions/0014-motor-de-diseno.md) y
+[ADR-0015](docs/decisions/0015-motion-vendorizado-por-niveles.md).
+
+#### Añadido
+
+- `[SEGURO]` **`design.toml`**, el contrato de máquina de la identidad (color,
+  neutros, superficie, radio, fuentes, tema de Basecoat, cabecera, nivel de
+  motion), y **`make design build`**, que lo compila a bloques delimitados de
+  `input.css`, fuentes locales y scripts. Idempotente; `make design watch`,
+  `make design-set v="…"`, `make design-init preset=<estilo>`.
+- `[SEGURO]` **Paleta completa derivada en OKLCH** (unos treinta tokens, claro y
+  oscuro) con el contraste WCAG AA *resuelto* por construcción. Si un color de
+  marca no puede llevar el texto del botón, el build falla y propone el hex más
+  cercano que sí. Neutros `pure|warm|cool|tinted`, superficie `light|cream|dark`
+  (`dark` = solo oscuro), color secundario opcional.
+- `[SEGURO]` **`make font name=… weights=… role=display|body|mono`**: comprueba la
+  familia en Fontsource, descarga el woff2 (validado por firma y longitud) y
+  escribe `@font-face` y los tokens. Nunca CDN.
+- `[SEGURO]` **Layouts**: `layouts/app.html` y `layouts/landing.html`;
+  `base.html` expone `header`, `main` y `footer`. **Cuatro arquetipos de
+  cabecera** (`sticky-blur`, `floating-pill`, `industrial-rule`, `terminal-bar`)
+  más `custom`, que comparten `partials/nav_auth.html` (la lógica de sesión).
+- `[SEGURO]` **Motion declarativo por niveles** con atributos `data-motion`:
+  `motion.js` propio (reveal, stagger, split-reveal, count, marquee), Motion One
+  10.18 (parallax, progress, muelle) y GSAP 3.15 con ScrollTrigger (pin, scrub,
+  horizontal). `make design build` descarga la librería que el nivel pide, fijada
+  por versión y SHA-256, con su `NOTICE.md`. Sin JS, o con
+  `prefers-reduced-motion`, todo el contenido se ve. Funciona con HTMX.
+- `[SEGURO]` **`/_design`** (solo desarrollo): tokens con su contraste, escala
+  tipográfica, componentes, hero de prueba, modo oscuro y el vocabulario de motion
+  del nivel; `?style=<estilo>` previsualiza una paleta sin escribir nada. Flag
+  `DESIGN_PREVIEW`; no existe en producción.
+- `[SEGURO]` **`make design-check`**: valida el contrato contra el proyecto
+  (contraste, `input.css` al día, fuentes, librerías, cabecera, atributos de motion
+  por encima del nivel, coherencia con `DESIGN.md`) y se pone en rojo si
+  `design.toml` sigue en los valores por defecto. Corre en CI con `--allow-defaults`.
+- `[SEGURO]` **Once estilos de partida** (los seis de 1.1 más `editorial`,
+  `organico`, `neo-brutalista`, `retro-y2k`, `oscuro-tecnologico`): cada uno fija
+  tema, radio, neutros, superficie, fuentes, cabecera y nivel de motion a la vez.
+  Catálogos nuevos en la skill: `archetypes.md` (siete heroes, secciones,
+  texturas, navegación), `type-pairings.md` (25 parejas instalables) y una
+  referencia por estilo. Se vendorizan también `redesign-skill` y `brandkit` de
+  taste-skill (MIT).
+- `[SEGURO]` **`DESIGN.md`** gana **Firma visual** (2-3 gestos propios que el
+  proyecto se compromete a repetir; la capa que ningún catálogo puede
+  homogeneizar) y **Arquetipos**.
+- `[SEGURO]` Comandos **`/kiro-design-review`** (capturas a 375 y 1280 px, contraste
+  con `DESIGN.md` y con "¿se parece al default?", hasta dos pasadas) y
+  **`/kiro-redesign`** (audita una app ya construida sin cambiar su comportamiento).
+  `/kiro-init` propone ahora **tres direcciones contrastadas**.
+
+#### Cambiado
+
+- `[MIGRACIÓN]` Las páginas extienden `layouts/app.html` (o `landing.html`) en
+  vez de `base.html`. Una página que siga extendiendo `base.html` funciona igual.
+  Ver la tabla de archivos a fusionar en
+  [`docs/upgrading.md`](docs/upgrading.md#actualizar-el-motor-de-diseño).
+- `[MIGRACIÓN]` `make brand-colors` es ahora un atajo que escribe `[brand]` en
+  `design.toml` y recompila; acepta `neutral=`, `surface=`, `secondary=`. Un color
+  que no pase AA con el texto del botón ya no solo avisa: el build falla.
+- `[MIGRACIÓN]` El `Dockerfile` copia `design.toml` a la imagen de producción
+  (las plantillas leen de ahí la cabecera, la superficie oscura y el motion).
+- `[SEGURO]` `pages/home.html` y el ejemplo de `kiro-feature` son andamio
+  explícito (titular y lista con separadores), no un molde que imitar.
+- `[SEGURO]` El contraste del texto del botón se mide contra el color que se
+  emite (`oklch(0.985)`), no contra blanco puro: en 1.1 podía informar 4.6:1
+  cuando el real era 4.4:1.
+- `[SEGURO]` La skill `kiro-design` se reescribe: motor, estructura, varianza,
+  motion y bucle de percepción. Corrige la recomendación de Satoshi y Cabinet
+  Grotesk (no están en Fontsource) y avisa de que la CSP bloquea las imágenes
+  externas.
+
+#### Corregido
+
+- `[SEGURO]` Un `<section class="dark">` dentro de una página clara conservaba los
+  colores claros (los tokens `--color-*` de Tailwind se resuelven en `:root`). El
+  compilador re-mapea el tema bajo `.dark`, así que una banda oscura funciona.
+
 ## [1.1.0] — 2026-10-12 · Identidad visual
 
 ### Añadido

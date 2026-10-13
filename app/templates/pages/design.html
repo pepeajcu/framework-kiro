@@ -1,0 +1,386 @@
+{#
+  /_design — la identidad del proyecto en una página. Solo en desarrollo.
+
+  Aquí se itera la identidad ANTES de construir features: se cambia design.toml,
+  se corre `make design build` y se recarga. Si algo se ve mal en esta página,
+  se verá mal en todas.
+
+  Todo lo que se pinta usa tokens (bg-primary, text-muted-foreground…), nunca un
+  color suelto: es exactamente lo que cambia al compilar el contrato.
+  `?style=<preset>` y las claves de [brand] previsualizan una paleta sin
+  escribir nada: /_design?style=brutalista&surface=cream
+#}
+{% extends "layouts/app.html" %}
+{% set page_width = "max-w-6xl" %}
+{% set use_motion = true %}
+
+{% block title %}Diseño — {{ settings.app_name }}{% endblock %}
+{% block description %}Tokens, tipografía y componentes del proyecto.{% endblock %}
+
+{% block head_extra %}
+<meta name="robots" content="noindex">
+{% if page.preview_css %}
+{# Vista previa: solo variables CSS generadas a partir de números validados. #}
+<style id="design-preview">{{ page.preview_css | safe }}</style>
+{% endif %}
+{% endblock %}
+
+{% macro section(id, title, lead=None) %}
+<section id="{{ id }}" class="border-border border-t pt-10 pb-4 first:border-t-0 first:pt-0">
+  <h2 class="text-2xl font-semibold tracking-tight">{{ title }}</h2>
+  {% if lead %}<p class="text-muted-foreground mt-1 max-w-prose text-sm">{{ lead }}</p>{% endif %}
+  <div class="mt-6">{{ caller() }}</div>
+</section>
+{% endmacro %}
+
+{% block content %}
+{% set contract = page.contract %}
+{% set brand = contract.brand %}
+
+<header class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-muted-foreground font-mono text-xs tracking-wider uppercase">Solo desarrollo</p>
+    <h1 class="mt-1 text-4xl font-semibold tracking-tight">Diseño del proyecto</h1>
+  </div>
+  <div class="flex items-center gap-2">
+    {# Alterna la clase `dark` de <html>: así se ven también los `dark:` de los
+       componentes, que un contenedor `.dark` suelto no activa. Un proyecto solo
+       oscuro no tiene modo claro que mostrar. #}
+    {% if brand.surface != "dark" %}
+    <button class="btn" data-variant="outline" type="button"
+            onclick="document.documentElement.classList.toggle('dark')">
+      Alternar modo oscuro
+    </button>
+    {% endif %}
+  </div>
+</header>
+
+{% if page.error %}
+<div class="border-destructive/40 bg-destructive/10 text-destructive mt-6 rounded-md border p-3 text-sm" role="alert">
+  <pre class="font-sans whitespace-pre-wrap">{{ page.error }}</pre>
+</div>
+{% endif %}
+
+{% for warning in page.warnings %}
+<div class="border-destructive/40 bg-destructive/10 text-destructive mt-6 rounded-md border p-3 text-sm" role="status">
+  {{ warning }}
+</div>
+{% endfor %}
+
+{% if page.preview_label %}
+<div class="border-primary/40 bg-primary/10 mt-6 rounded-md border p-3 text-sm" role="status">
+  <strong>Vista previa: {{ page.preview_label }}.</strong>
+  Solo se ven los colores y el radio; el tema de Basecoat y las fuentes se aplican con
+  <code class="font-mono">make design-init</code> / <code class="font-mono">make design build</code>.
+  <a class="underline underline-offset-4" href="/_design">Volver a la identidad real</a>
+</div>
+{% endif %}
+
+{# --- Contrato ------------------------------------------------------------- #}
+<dl class="mt-8 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+  {% for label, value in [
+    ("Marca", brand.primary ~ (" + " ~ brand.secondary if brand.secondary else "")),
+    ("Neutros / superficie", brand.neutral ~ " / " ~ brand.surface),
+    ("Radio / tema", brand.radius ~ " / " ~ contract.basecoat.theme),
+    ("Cabecera / motion", contract.structure.header ~ " / nivel " ~ contract.motion.level),
+  ] %}
+  <div>
+    <dt class="text-muted-foreground">{{ label }}</dt>
+    <dd class="font-mono">{{ value }}</dd>
+  </div>
+  {% endfor %}
+  {% for role, face in contract.typography.faces() %}
+  <div>
+    <dt class="text-muted-foreground">Fuente {{ role }}</dt>
+    <dd class="font-mono">{{ face.name }} {{ face.weights | join(", ") }}</dd>
+  </div>
+  {% else %}
+  <div class="sm:col-span-2">
+    <dt class="text-muted-foreground">Fuentes</dt>
+    <dd class="font-mono">sin declarar (la de Basecoat)</dd>
+  </div>
+  {% endfor %}
+</dl>
+
+{% if contract.is_default and not page.preview_label %}
+<div class="border-border bg-muted/50 mt-6 rounded-md border p-3 text-sm" role="status">
+  <strong>design.toml sigue en los valores por defecto.</strong>
+  Este proyecto se verá igual que cualquier otro Kiro. Elige una identidad con
+  <code class="font-mono">/kiro-init</code> o previsualiza estilos aquí abajo.
+</div>
+{% endif %}
+
+<div class="mt-10 space-y-10">
+
+{% call section("estilos", "Estilos", "Previsualiza la paleta y el radio de cada estilo sin tocar nada.") %}
+  <ul class="flex flex-wrap gap-2">
+    {% for preset in page.presets %}
+    <li>
+      <a class="btn" data-variant="outline" data-size="sm" href="/_design?style={{ preset.name }}"
+         title="{{ preset.reads_as }}">{{ preset.name }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+{% endcall %}
+
+{% call section("tokens", "Tokens", "Cada par es fondo y texto; los números son el contraste WCAG (AA = 4.5).") %}
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {% for s in page.swatches %}
+    <div class="border-border overflow-hidden rounded-lg border">
+      <div class="px-4 py-5" style="background: var({{ s.background }}); color: var({{ s.foreground }})">
+        <p class="text-lg font-medium">{{ s.name }}</p>
+        <p class="text-sm opacity-90">Texto sobre {{ s.name }}. Aa 123</p>
+      </div>
+      <div class="text-muted-foreground flex justify-between px-4 py-2 font-mono text-xs">
+        <span>{{ s.background }}</span>
+        <span>
+          {% if s.ratio_light is not none %}claro {{ s.ratio_light }}{% endif %}
+          {% if s.ratio_dark is not none %} · oscuro {{ s.ratio_dark }}{% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-3 grid gap-3 sm:grid-cols-3">
+    {% for name, var in page.lines %}
+    <div class="flex items-center gap-3 rounded-lg border p-3">
+      <span class="size-8 shrink-0 rounded-md border" style="background: var({{ var }})"></span>
+      <span class="font-mono text-sm">{{ name }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-3 flex gap-2" aria-label="Escala de gráficos">
+    {% for n in range(1, 6) %}
+    <span class="h-10 flex-1 rounded-md" style="background: var(--chart-{{ n }})" title="--chart-{{ n }}"></span>
+    {% endfor %}
+  </div>
+{% endcall %}
+
+{% call section("tipografia", "Tipografía", "La fuente de titulares (h1–h3), la del texto y la monoespaciada.") %}
+  <div class="grid gap-8 lg:grid-cols-2">
+    <div class="space-y-3">
+      <h1 class="text-5xl tracking-tight">Titular uno</h1>
+      <h2 class="text-3xl tracking-tight">Titular dos</h2>
+      <h3 class="text-xl">Titular tres</h3>
+      <p class="max-w-prose">
+        Texto de párrafo a tamaño base. Un buen párrafo no pasa de unos 65
+        caracteres de ancho y deja respirar la línea: así se lee sin esfuerzo,
+        también en pantallas pequeñas y con la ñ, los acentos y la ü bien puestos.
+      </p>
+      <p class="text-muted-foreground max-w-prose text-sm">
+        Texto secundario, más pequeño y apagado, para ayudas y metadatos.
+      </p>
+      <p class="font-mono text-sm">const identidad = "mono"; // 0123456789</p>
+    </div>
+    <div class="space-y-1">
+      {% for size in ["text-6xl", "text-5xl", "text-4xl", "text-3xl", "text-2xl", "text-xl", "text-lg", "text-base", "text-sm", "text-xs"] %}
+      <div class="flex items-baseline gap-4">
+        <span class="text-muted-foreground w-20 shrink-0 font-mono text-xs">{{ size }}</span>
+        <span class="{{ size }} truncate leading-tight">Hamburgefonstiv</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endcall %}
+
+{% call section("botones", "Botones", "Variantes y tamaños de Basecoat; el color de marca vive en `primary`.") %}
+  <div class="space-y-4">
+    {% for size in ["xs", "sm", "default", "lg"] %}
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-muted-foreground w-16 font-mono text-xs">{{ size }}</span>
+      {% for variant in ["primary", "secondary", "outline", "ghost", "link", "destructive"] %}
+      <button class="btn" data-variant="{{ variant }}" data-size="{{ size }}" type="button">{{ variant }}</button>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-muted-foreground w-16 font-mono text-xs">badge</span>
+      {% for variant in ["primary", "secondary", "outline", "destructive"] %}
+      <span class="badge" data-variant="{{ variant }}">{{ variant }}</span>
+      {% endfor %}
+      <button class="btn" data-variant="primary" type="button" disabled>deshabilitado</button>
+    </div>
+  </div>
+{% endcall %}
+
+{% call section("formularios", "Formularios", "Etiqueta encima del campo, error visible y foco con anillo.") %}
+  <form class="grid max-w-3xl gap-4 sm:grid-cols-2" onsubmit="return false">
+    <div class="field">
+      <label class="label" for="d-name">Nombre</label>
+      <input class="input" id="d-name" type="text" value="Ana Pérez">
+      <p class="text-muted-foreground text-sm">Cómo aparecerá en el sitio.</p>
+    </div>
+    <div class="field" data-invalid="true">
+      <label class="label" for="d-email">Email</label>
+      <input class="input" id="d-email" type="email" value="ana@" aria-invalid="true" aria-describedby="d-email-error">
+      <p role="alert" id="d-email-error" class="text-destructive text-sm">Escribe un email completo.</p>
+    </div>
+    <div class="field">
+      <label class="label" for="d-city">Ciudad</label>
+      <select class="select" id="d-city">
+        <option>Madrid</option>
+        <option>Guatemala</option>
+        <option>Lima</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="label" for="d-note">Nota</label>
+      <textarea class="textarea" id="d-note" rows="3">Texto largo de ejemplo.</textarea>
+    </div>
+    <div class="flex items-center gap-6">
+      <label class="label gap-2"><input type="checkbox" class="input" checked> Acepto</label>
+      <label class="label gap-2"><input type="checkbox" class="input" role="switch" checked> Avisos</label>
+    </div>
+    <div class="flex items-end justify-end gap-2">
+      <button class="btn" data-variant="outline" type="button">Cancelar</button>
+      <button class="btn" data-variant="primary" type="submit">Guardar</button>
+    </div>
+  </form>
+{% endcall %}
+
+{% call section("superficies", "Superficies", "Tarjeta, aviso, tabla y barra de progreso.") %}
+  <div class="grid gap-6 lg:grid-cols-2">
+    <article class="card">
+      <header>
+        <h2>Una tarjeta</h2>
+        <p>Solo cuando la elevación significa algo.</p>
+      </header>
+      <section>
+        <p class="text-muted-foreground text-sm">Contenido de la tarjeta con texto apagado.</p>
+        <div class="progress mt-4" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100">
+          <span style="width: 62%"></span>
+        </div>
+      </section>
+      <footer>
+        <button class="btn" data-variant="primary" data-size="sm" type="button">Aceptar</button>
+      </footer>
+    </article>
+
+    <div class="space-y-4">
+      <div class="alert">
+        <h3>Aviso</h3>
+        <section>Un mensaje con el tono neutro de la interfaz.</section>
+      </div>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr><th>Concepto</th><th>Estado</th><th class="text-right">Importe</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Servicio mensual</td><td><span class="badge" data-variant="secondary">pagado</span></td><td class="text-right">48,00</td></tr>
+            <tr><td>Instalación</td><td><span class="badge" data-variant="outline">pendiente</span></td><td class="text-right">120,00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endcall %}
+
+{% call section("hero", "Hero de prueba", "Un titular a tamaño real: es donde la tipografía y el color se juzgan de verdad.") %}
+  <div class="bg-card text-card-foreground border-border overflow-hidden rounded-xl border">
+    <div class="grid items-center gap-8 p-8 sm:p-12 lg:grid-cols-[1.4fr_1fr]">
+      <div>
+        <h2 class="max-w-xl text-4xl leading-[1.05] tracking-tight text-balance sm:text-6xl">
+          Un titular con carácter propio
+        </h2>
+        <p class="text-muted-foreground mt-5 max-w-md text-lg text-pretty">
+          Si esto se parece a cualquier otra web de plantilla, la identidad
+          todavía no está hecha.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <button class="btn" data-variant="primary" data-size="lg" type="button">Acción principal</button>
+          <button class="btn" data-variant="outline" data-size="lg" type="button">Secundaria</button>
+        </div>
+      </div>
+      <div class="bg-primary text-primary-foreground flex aspect-square max-h-72 items-end rounded-lg p-6">
+        <p class="font-mono text-sm">Bloque de marca<br>color primario</p>
+      </div>
+    </div>
+  </div>
+{% endcall %}
+
+{% set level = contract.motion.level %}
+{% call section("motion", "Movimiento", "Nivel " ~ level ~ " de 10. La página solo escribe atributos data-motion; el nivel de design.toml decide cuáles hacen algo.") %}
+  {% if level < 4 %}
+  <p class="text-muted-foreground max-w-prose text-sm">
+    En los niveles 1 a 3 solo hay transiciones CSS (hover, foco, <code class="font-mono">active:</code>).
+    Sube <code class="font-mono">motion.level</code> a 4 en design.toml para el movimiento al hacer scroll.
+  </p>
+  {% else %}
+  <div class="space-y-10">
+    <h3 class="max-w-2xl text-4xl tracking-tight text-balance" data-motion="split-reveal">
+      Un titular que sube palabra a palabra
+    </h3>
+
+    <p class="text-muted-foreground max-w-prose" data-motion="reveal" data-motion-delay="0.15">
+      <code class="font-mono">data-motion="reveal"</code>: aparece al entrar en pantalla.
+      Sin JavaScript, o con movimiento reducido, este texto se ve igual, quieto.
+    </p>
+
+    <ul class="grid gap-3 sm:grid-cols-3" data-motion="stagger" data-motion-delay="0.1">
+      {% for n in ["Primero", "Segundo", "Tercero"] %}
+      <li class="bg-card border-border rounded-lg border p-4">
+        <p class="font-medium">{{ n }}</p>
+        <p class="text-muted-foreground text-sm"><code class="font-mono">stagger</code>: entran en cascada.</p>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <p class="text-5xl">
+      <span class="tracking-tight" data-motion="count" data-motion-to="1280">1.280</span>
+      <span class="text-muted-foreground text-base">cuenta hasta su valor</span>
+    </p>
+
+    <div class="border-border border-y py-3" data-motion="marquee" data-motion-speed="24">
+      {% for word in ["Servidor", "HTMX", "Basecoat", "PostgreSQL", "Tailwind", "FastAPI"] %}
+      <span class="text-2xl font-medium whitespace-nowrap">{{ word }}</span>
+      {% endfor %}
+    </div>
+
+    {% if level >= 7 %}
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div class="bg-muted text-muted-foreground flex h-40 items-center justify-center rounded-lg" data-motion="parallax">
+        parallax
+      </div>
+      <div class="bg-primary text-primary-foreground flex h-40 items-center justify-center rounded-lg" data-motion="reveal" data-motion-ease="spring">
+        reveal con muelle
+      </div>
+    </div>
+    {% endif %}
+
+    {% if level >= 9 %}
+    <p class="max-w-2xl text-3xl leading-snug tracking-tight text-balance" data-motion="scrub">
+      Este texto se ilumina palabra a palabra mientras haces scroll, al ritmo de tu mano.
+    </p>
+    <p class="text-muted-foreground max-w-prose text-sm">
+      Además, <code class="font-mono">pin</code> deja una sección fija mientras se hace scroll y
+      <code class="font-mono">horizontal</code> recorre una banda ancha: se ven en una landing,
+      no aquí (ver kiro-design, "Motion").
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endcall %}
+
+{# Mismo contenido bajo `.dark`: cambian los tokens (los `dark:` de los
+   componentes solo con el botón de arriba). Es también la receta de una banda
+   oscura en una web clara: <section class="dark bg-background text-foreground">.
+   Si el proyecto es solo oscuro, las dos mitades son iguales a propósito. #}
+{% call section("oscuro", "Modo oscuro", "Los mismos tokens bajo `.dark`.") %}
+  <div class="dark bg-background text-foreground border-border rounded-xl border p-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <button class="btn" data-variant="primary" type="button">Primario</button>
+      <button class="btn" data-variant="secondary" type="button">Secundario</button>
+      <button class="btn" data-variant="outline" type="button">Contorno</button>
+      <span class="badge" data-variant="secondary">badge</span>
+      <span class="text-muted-foreground text-sm">Texto apagado sobre el fondo</span>
+    </div>
+    <article class="card mt-4 max-w-md">
+      <header><h2>Tarjeta oscura</h2><p>Con su propio contraste.</p></header>
+      <section><input class="input" type="text" value="Un campo"></section>
+    </article>
+  </div>
+{% endcall %}
+
+</div>
+{% endblock %}

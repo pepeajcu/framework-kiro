@@ -22,3 +22,5 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0011](0011-consentimiento-y-analitica.md) | Consentimiento por cookie y analítica server-side sin bloquear al usuario | Aceptada |
 | [0012](0012-registro-de-sitemap.md) | Sitemap por registro de proveedores, no por consulta a un modelo | Aceptada |
 | [0013](0013-identidad-visual-con-taste-skill.md) | Identidad visual: `DESIGN.md`, tokens de marca y taste-skill | Aceptada |
+| [0014](0014-motor-de-diseno.md) | Motor de diseño: `design.toml`, compilador, layouts y percepción | Aceptada |
+| [0015](0015-motion-vendorizado-por-niveles.md) | Motion declarativo, por niveles y vendorizado bajo demanda | Aceptada |

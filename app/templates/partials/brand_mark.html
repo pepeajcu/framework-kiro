@@ -1,0 +1,16 @@
+{# Logo + nombre del sitio. Lo comparten todas las cabeceras.
+
+   El logo vive en app/static/brand/ (make logo src=...). Sin logo, solo el
+   nombre. Altura fija: así el layout no salta al cargar la imagen.
+
+   No fija color: hereda el de la cabecera, para que funcione también sobre una
+   barra invertida. Variables opcionales (se fijan con {% set %} antes de incluir):
+     mark_class       clases del enlace (por defecto, semibold y tracking-tight)
+     mark_logo_class  clases del <img> (por defecto, size-8) #}
+{% set logo = brand_logo() %}
+<a href="/" class="flex items-center gap-2.5 {{ mark_class | default('text-base font-semibold tracking-tight') }}">
+  {% if logo %}
+    <img src="{{ logo }}" alt="" width="32" height="32" class="{{ mark_logo_class | default('size-8') }} shrink-0 object-contain">
+  {% endif %}
+  <span>{{ settings.app_name }}</span>
+</a>

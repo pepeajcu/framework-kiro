@@ -83,12 +83,16 @@ grep -oE "\.btn\[data-variant='[a-z]+'\]" app/static/css/vendor/basecoat/styles/
 **Never edit `app/static/css/vendor/` or `app/templates/basecoat/`.** Those are
 overwritten when Basecoat is updated. Instead:
 
-- Design tokens (colours, fonts, radius) → `@theme` block in
-  `app/static/css/input.css`
+- Design tokens (colours, fonts, radius, theme) → `design.toml`, applied with
+  `make brand-colors`, `make font`, `make design-set` and `make design build`.
+  They are compiled into the `kiro:*` blocks of `app/static/css/input.css`,
+  which are rewritten on every build: never edit inside them. Your own CSS goes
+  outside the blocks.
 - A reusable project-specific component → `app/templates/components/`, built out
   of Basecoat classes
-- Switching the whole look → change the theme import in `input.css`:
-  `vega` `nova` `maia` `lyra` `mira` `luma` `sera` `rhea`
+- Switching the whole look → the theme: `make design-set v="basecoat.theme=nova"`
+  (`vega` `nova` `maia` `lyra` `mira` `luma` `sera` `rhea`). The skill
+  `kiro-design` says what each one is.
 
 ## After any template change
 

@@ -5,12 +5,18 @@
 > El método está en `.claude/skills/kiro-design/SKILL.md` (basado en
 > [taste-skill](https://github.com/Leonxlnx/taste-skill)).
 >
+> Tiene dos mitades que deben coincidir. **`design.toml`** es lo que una máquina
+> puede aplicar (colores, fuentes, tema, cabecera, nivel de movimiento) y se
+> compila con `make design build`. **Este archivo** es lo que hay que decidir:
+> tono, referencias, los diales, los arquetipos y, sobre todo, la **firma
+> visual**. `make design-check` avisa si se contradicen.
+>
 > Mientras tenga `TODO`, la IA no debe inventar una identidad visual: debe
 > pedirte que lo rellenes.
 
 ## Identidad
 
-- **Estilo:** TODO <!-- minimalista | suave-premium | brutalista | institucional | expresivo | panel-de-datos | o una descripción propia -->
+- **Estilo:** TODO <!-- minimalista | suave-premium | brutalista | institucional | expresivo | panel-de-datos | editorial | organico | neo-brutalista | retro-y2k | oscuro-tecnologico | o una descripción propia -->
 - **Referencias:** TODO <!-- webs o marcas que te gustan (opcional) -->
 - **Público:** TODO <!-- quién lo usa: define el tono más que el gusto -->
 - **Tono de los textos:** TODO <!-- ej. cercano y directo / sobrio y técnico -->
@@ -23,21 +29,54 @@
 | `MOTION_INTENSITY` | TODO | estático | cinematográfico |
 | `VISUAL_DENSITY` | TODO | galería, aireado | cabina, denso |
 
+<!-- MOTION_INTENSITY es el `motion.level` de design.toml: deben coincidir. -->
+
+## Firma visual
+
+<!-- LO MÁS IMPORTANTE de este archivo. Dos o tres gestos que el proyecto se
+     compromete a repetir en cada página. No salen de ningún catálogo: se
+     inventan para este proyecto. Es lo que hace que dos proyectos del mismo
+     estilo no se parezcan.
+
+     Buenos: "titulares serif a 12vw que se salen del borde", "todo en
+     monoespaciada y mayúsculas con un único acento ácido", "una rejilla fina
+     siempre visible", "cada sección con su número en el margen".
+     Malos: "moderno", "limpio", "profesional" (no se pueden repetir ni comprobar). -->
+
+1. TODO
+2. TODO
+3. <!-- opcional -->
+
+## Arquetipos
+
+<!-- Elegidos de .claude/skills/kiro-design/references/archetypes.md. No
+     repetir el mismo en dos secciones seguidas. -->
+
+- **Hero:** TODO <!-- split | type-giant | bento | editorial | marquee | sticky-stack | horizontal-pan -->
+- **Secciones:** TODO <!-- statement | numbered | spec-sheet | dark-band | faq … -->
+- **Texturas:** TODO <!-- grain | grid | duotone | mesh | ninguna -->
+- **Cabecera:** TODO <!-- sticky-blur | floating-pill | industrial-rule | terminal-bar | custom (= [structure] header) -->
+
 ## Color
 
 <!-- Una sola paleta, un solo acento. Se aplica con
-     `make brand-colors primary="#hex"`, que escribe los tokens en
-     app/static/css/input.css. Aquí se anota la decisión. -->
+     `make brand-colors primary="#hex" [neutral=…] [surface=…] [secondary="#hex"]`,
+     que escribe design.toml y compila los ~30 tokens (claro y oscuro) con
+     contraste WCAG AA resuelto. Aquí se anota la decisión. -->
 
 - **Primario (acento de marca):** TODO <!-- hex, ej. #0F766E -->
-- **Secundario / apoyo:** TODO <!-- opcional; si no, neutros -->
-- **Neutros:** TODO <!-- cálidos | fríos | puros. Uno solo -->
-- **Modo oscuro:** TODO <!-- sí | no | solo oscuro -->
+- **Secundario / apoyo:** TODO <!-- opcional; si no, ninguno -->
+- **Neutros:** TODO <!-- warm | cool | pure | tinted. Uno solo -->
+- **Superficie:** TODO <!-- light | cream | dark (dark = solo oscuro, sin selector de tema) -->
 
 ## Forma y tipografía
 
+<!-- Las fuentes se instalan con `make font` (locales, de Fontsource, nunca CDN).
+     Parejas probadas en .claude/skills/kiro-design/references/type-pairings.md -->
+
 - **Radio de esquinas:** TODO <!-- recto (0) | suave (0.5–0.75rem) | píldora -->
-- **Fuente de títulos:** TODO <!-- local en app/static/fonts, nunca CDN -->
+- **Tema de Basecoat:** TODO <!-- vega nova maia lyra mira luma sera rhea (= [basecoat] theme) -->
+- **Fuente de títulos:** TODO
 - **Fuente de texto:** TODO
 - **Fuente mono:** TODO <!-- opcional -->
 

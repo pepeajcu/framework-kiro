@@ -65,10 +65,13 @@ app/
 ├── emails/            correo transaccional — un adaptador por proveedor
 ├── analytics/         GA4 y Meta server-side — mismo patrón que emails/
 ├── seo/               registro de proveedores del sitemap (sitemap.py)
+├── design_engine/     compila design.toml a CSS, fuentes y motion (puro, testeado)
 ├── templates/
-│   ├── base.html      plantilla raíz: meta, OG, assets
-│   ├── pages/         páginas completas
-│   ├── partials/      fragmentos HTMX (NO extienden base.html)
+│   ├── base.html      esqueleto: meta, OG, assets y los huecos header/main/footer
+│   ├── layouts/       app.html (contenedor centrado) y landing.html (a sangre)
+│   ├── pages/         páginas completas (extienden un layout)
+│   ├── partials/      fragmentos HTMX (NO extienden ningún layout), la cabecera
+│   │                  (headers/ = sus arquetipos) y nav_auth.html (la sesión)
 │   ├── emails/        plantillas de correo (.html + .txt por mensaje)
 │   ├── components/    componentes propios del proyecto
 │   └── basecoat/      macros vendorizadas — no editar

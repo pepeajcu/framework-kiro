@@ -190,10 +190,21 @@ app.include_router(providers.router)
 
 ## 7. Templates
 
+Pages extend a **layout**, not `base.html`: `layouts/app.html` for lists, forms
+and private screens (centred container), `layouts/landing.html` for a page with
+sections of its own. The layout decides width and rhythm; the page fills
+`{% block content %}`.
+
 Full page in `app/templates/pages/providers/list.html`:
 
 ```jinja
-{% extends "base.html" %}
+{#
+  SCAFFOLD, NOT DESIGN. This shows the plumbing (layout, blocks, a loop, an empty
+  state). How the page should LOOK comes from DESIGN.md and
+  .claude/skills/kiro-design/: its archetype, its signature, its type. Do not
+  ship this shape; it is deliberately plain.
+#}
+{% extends "layouts/app.html" %}
 
 {% block title %}Providers — {{ settings.app_name }}{% endblock %}
 {% block description %}Directory of active providers.{% endblock %}
@@ -201,22 +212,25 @@ Full page in `app/templates/pages/providers/list.html`:
 {% block content %}
 <h1 class="text-3xl font-semibold tracking-tight">Providers</h1>
 
-<div class="mt-6 grid gap-4 sm:grid-cols-2">
+{# A ruled list, not a grid of cards: cards only when each one is a thing with
+   its own actions. Rules cost nothing and do not look like every other site. #}
+<ul class="divide-border border-border mt-6 divide-y border-y">
   {% for provider in providers %}
-    <article class="card">
-      <header>
-        <h2><a href="/providers/{{ provider.slug }}">{{ provider.name }}</a></h2>
-      </header>
-      <section>
-        <p class="text-muted-foreground text-sm">{{ provider.description or "" }}</p>
-      </section>
-    </article>
+    <li class="py-4">
+      <h2 class="font-medium"><a href="/providers/{{ provider.slug }}">{{ provider.name }}</a></h2>
+      <p class="text-muted-foreground text-sm">{{ provider.description or "" }}</p>
+    </li>
   {% else %}
-    <p class="text-muted-foreground">No providers yet.</p>
+    {# Empty state: say what it is and how to fill it. #}
+    <li class="text-muted-foreground py-4">No providers yet.</li>
   {% endfor %}
-</div>
+</ul>
 {% endblock %}
 ```
+
+Colours are tokens (`text-muted-foreground`, `border-border`), never a hex: they
+are what `design.toml` compiles. Before writing a *new* page's markup, read
+`DESIGN.md` and the `kiro-design` skill.
 
 A form page needs the CSRF token, or the POST comes back 403:
 
@@ -238,12 +252,12 @@ one by re-rendering the form with a 400. `app/routers/auth.py` is the worked
 example.
 
 For an HTMX interaction, the fragment goes in `partials/` and does **not**
-extend `base.html`:
+extend any layout:
 
 ```jinja
 {# app/templates/partials/provider_results.html #}
 {% for provider in providers %}
-  <article class="card">...</article>
+  <li class="py-4">...</li>
 {% endfor %}
 ```
 

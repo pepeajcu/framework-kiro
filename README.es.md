@@ -91,6 +91,14 @@ de escribirlas:
 - **Endurecido de serie**: CSRF en todas las rutas, límites de intentos
   respaldados por PostgreSQL, cabeceras de seguridad y un identificador por
   petición en cada línea de log.
+- **Un motor de diseño, para que los proyectos no se parezcan entre sí.**
+  `design.toml` se compila (`make design build`) en una paleta completa clara y
+  oscura con el contraste WCAG AA *resuelto*, no solo comprobado; fuentes locales
+  de Fontsource; uno de los ocho temas de Basecoat; un arquetipo de cabecera; y
+  un nivel de movimiento desde CSS hasta GSAP, con atributos `data-motion`. Once
+  estilos de partida, catálogos de heroes y parejas tipográficas, una página
+  `/_design` para juzgar el resultado y `/kiro-design-review` para verlo a 375 y
+  1280 px.
 - SSR completo con SEO de serie: canonical, Open Graph, páginas 404/500 propias.
 - Capa de repositorios tipada que hace cumplible la regla "ninguna query fuera
   de `repositories/`".
@@ -116,6 +124,8 @@ Publicado. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
 | v0.2.0 | Auth, correo transaccional, CSRF y seguridad | Publicada |
 | v0.3.0 | Analítica server-side y SEO | Publicada |
 | v1.0.0 | Documentación, ejemplo completo, release público | Publicada |
+| v1.1.0 | Identidad visual: `DESIGN.md`, color de marca y logo | Publicada |
+| v1.2.0 | Motor de diseño: `design.toml`, layouts, fuentes, motion, `/_design` | Sin publicar |
 
 ## Documentación
 

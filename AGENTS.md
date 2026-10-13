@@ -7,9 +7,11 @@ Codex and Cursor all read this file (Claude Code via `CLAUDE.md`, which imports 
 entities, rules, decisions already made. This file tells you *how* to build;
 `PROJECT.md` tells you *what*.
 
-**Read `DESIGN.md` before writing any template.** It holds the brand: colours,
-style, the three design dials, the logo. Load the `kiro-design` skill with it.
-Without them every Kiro project looks the same.
+**Read `DESIGN.md` before writing any template.** It holds the brand: style, the
+three design dials, the visual signature, the archetypes, the logo. Load the
+`kiro-design` skill with it. `design.toml` is its machine half (colours, fonts,
+theme, header, motion level): `make design build` compiles it. Without them
+every Kiro project looks the same.
 
 The architecture below is already built and working. Do not redesign it, do not
 propose alternatives, do not spend tokens re-deriving it. Build features on top.
@@ -45,8 +47,15 @@ make revision m="add providers table"   # generate a migration from the models
 make migrate    # apply migrations
 make css        # rebuild Tailwind after editing templates
 make logo src=./logo.svg                  # set the brand logo (path or URL)
-make brand-colors primary="#0F766E"       # apply the brand colour as tokens
+make brand-colors primary="#0F766E"       # brand colour (+ neutral=, surface=, secondary=, radius=)
+make font name="Fraunces" weights="400,600" role=display   # a local font from Fontsource
+make design-init preset=brutalista        # start the whole identity from a style
+make design build                         # compile design.toml: CSS, fonts, motion (idempotent)
+make design-check                         # does design.toml match what the project ships?
 ```
+
+The identity commands all rewrite `design.toml` and rebuild; `/_design` (dev
+only) shows the result. See `.claude/skills/kiro-design/SKILL.md`.
 
 Always run `make check` before reporting work as done. It is what CI runs.
 
@@ -65,7 +74,8 @@ router → service → repository → model → Jinja template → HTML
 | `app/repositories/` | **The only layer that touches the database.** |
 | `app/models/` | SQLAlchemy tables |
 | `app/schemas/` | Pydantic input/output validation |
-| `app/templates/` | Jinja2. `pages/` full pages, `partials/` HTMX fragments |
+| `app/templates/` | Jinja2. `layouts/` page shells, `pages/` full pages, `partials/` HTMX fragments |
+| `app/design_engine/` | Compiles `design.toml` into CSS, fonts and motion scripts. Pure and tested |
 | `app/emails/` | Transactional email: one adapter per provider, plus rendering |
 | `app/security.py` | argon2 hashing, opaque tokens, session cookie flags |
 | `app/middleware/` | request id, security headers, CSRF cookie |
@@ -252,14 +262,29 @@ Most components are CSS classes only. Nine complex ones ship Jinja macros in
 ```
 
 The handler returns a `partials/` template — a fragment, not a document that
-extends `base.html`. See `app/routers/pages.py:demo_ping` for a working example.
+extends a layout. See `app/routers/pages.py:demo_ping` for a working example.
 
-**Identity lives in tokens, not in templates.** Brand colour and radius are set
-once with `make brand-colors primary="#hex"`, the logo with
-`make logo src=<path|url>` (SVG, or PNG 1:1, stored in `app/static/brand/`).
+**Pages extend a layout, not `base.html`.** `layouts/app.html` (centred
+container: private screens, lists, forms) or `layouts/landing.html` (full-bleed
+sections, loads motion). The header is an archetype chosen in `design.toml`
+(`partials/headers/`); the session logic (user, logout, login) lives in
+`partials/nav_auth.html` and must not be rewritten when restyling.
+
+**Identity lives in tokens, not in templates.** Colour, greys, surface, radius,
+fonts, Basecoat theme, header and motion level are set in `design.toml`
+(`make brand-colors`, `make font`, `make design-set`, `make design build`), the
+logo with `make logo src=<path|url>` (SVG, or PNG 1:1, in `app/static/brand/`).
 Templates use `bg-primary`, `text-muted-foreground`… and `brand_logo()`; never a
-hard-coded hex or a logo file name. Design rules (anti-slop, dials, fonts without
-CDN) are in `.claude/skills/kiro-design/SKILL.md`.
+hard-coded hex or a logo file name. Never edit inside the `kiro:*` blocks of
+`input.css`: they are regenerated on every build.
+
+**Motion is attributes, never page JavaScript:** `data-motion="reveal"`,
+`"stagger"`, `"split-reveal"`, `"count"`… The level in `design.toml` decides what
+runs; content is always visible without JS and under reduced motion.
+
+Design rules (anti-slop, dials, signature, archetypes, fonts without CDN) are in
+`.claude/skills/kiro-design/SKILL.md`. `home.html` is scaffolding, not a model
+to imitate: build real pages from `DESIGN.md`.
 
 After editing any template, run `make css`: Tailwind scans templates for class
 names and drops anything it does not find.
@@ -270,6 +295,10 @@ names and drops anything it does not find.
 - Do not add React, Vue, Alpine, or a build step for JavaScript.
 - Do not add `package.json` or npm. There is no Node.js in this project (ADR-0005).
 - Do not load libraries from a CDN. Vendor them into `app/static/` (ADR-0005).
+  The motion libraries (Motion, GSAP) are the one managed exception: `make design
+  build` downloads them pinned and verified, per project (ADR-0015).
+- Do not write animation scripts in a page, or hide content yourself waiting for
+  JS. Use `data-motion`.
 - Do not convert the codebase to async SQLAlchemy (ADR-0002).
 - Do not edit anything under `app/static/css/vendor/` or
   `app/templates/basecoat/` — those are vendored and get overwritten on update.
@@ -282,8 +311,10 @@ names and drops anything it does not find.
 
 1. `PROJECT.md` — the domain. If it is still full of TODOs, ask the user to
    fill it in rather than inventing entities.
-2. `DESIGN.md` — the brand. If it still has TODOs, ask the user to run
-   `/kiro-init` rather than inventing a visual identity.
-3. `docs/decisions/` — why the stack is what it is.
+2. `DESIGN.md` and `design.toml` — the brand. If `DESIGN.md` still has TODOs, or
+   `make design-check` reports the defaults, ask the user to run `/kiro-init`
+   rather than inventing a visual identity.
+3. `docs/decisions/` — why the stack is what it is (ADR-0014 and 0015 for the
+   design engine and motion).
 4. `app/routers/pages.py` and `app/templates/pages/home.html` — a working
-   end-to-end example of the whole pattern.
+   end-to-end example of the plumbing (not of how a page should look).

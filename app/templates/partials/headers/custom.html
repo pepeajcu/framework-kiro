@@ -1,0 +1,14 @@
+{# Arquetipo custom: esta cabecera es del proyecto. `[structure] header = "custom"`
+   en design.toml la activa. Reescribe lo visual a tu gusto (DESIGN.md dice cómo
+   debe sentirse) y conserva las dos inclusiones: la marca y la sesión.
+
+   Empieza siendo una copia de sticky-blur para que activar `custom` no deje el
+   sitio sin cabecera. #}
+<header class="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
+  <nav aria-label="Principal" class="mx-auto flex w-full {{ page_width | default('max-w-5xl') }} items-center justify-between px-4 py-3">
+    {% include "partials/brand_mark.html" %}
+    <div class="flex items-center gap-2">
+      {% include "partials/nav_auth.html" %}
+    </div>
+  </nav>
+</header>

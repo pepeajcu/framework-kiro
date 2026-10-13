@@ -196,14 +196,22 @@ def oklch_to_rgb(lightness: float, chroma: float, hue: float) -> tuple[float, fl
     return encode(lin[0]), encode(lin[1]), encode(lin[2])
 
 
-def _fmt(lightness: float, chroma: float, hue: float) -> str:
-    return f"oklch({lightness:.3f} {chroma:.3f} {hue:.1f})"
+def format_oklch(lightness: float, chroma: float, hue: float, alpha: float | None = None) -> str:
+    """`oklch(L C H)` as CSS, with an optional `/ N%` alpha."""
+    suffix = f" / {alpha * 100:g}%" if alpha is not None else ""
+    return f"oklch({lightness:.3f} {chroma:.3f} {hue:.1f}{suffix})"
 
 
-_WHITE = (1.0, 1.0, 1.0)
-_INK = (0.07, 0.07, 0.07)
+# The two foregrounds Basecoat itself uses on a filled surface. The contrast we
+# report is measured against these exact colours, not against pure white/black:
+# `oklch(0.985 0 0)` is a touch darker than #fff, and that difference is what
+# separates a 4.6:1 button from a 4.4:1 one.
+FOREGROUND_ON_DARK = (0.985, 0.0, 0.0)  # light text, for dark fills
+FOREGROUND_ON_LIGHT = (0.145, 0.0, 0.0)  # ink, for light fills
+_LIGHT_TEXT = oklch_to_rgb(*FOREGROUND_ON_DARK)
+_INK = oklch_to_rgb(*FOREGROUND_ON_LIGHT)
 # Basecoat's own dark background, so the contrast we report is the real one.
-_DARK_BACKGROUND = oklch_to_rgb(0.145, 0.0, 0.0)
+DARK_BACKGROUND = oklch_to_rgb(0.145, 0.0, 0.0)
 
 
 @dataclass(frozen=True)
@@ -216,46 +224,60 @@ class BrandTokens:
     contrast_dark: float
 
 
-def _foreground_for(rgb: tuple[float, float, float]) -> tuple[str, float]:
-    """White or ink, whichever reads better on `rgb`, with the resulting ratio."""
-    on_white, on_ink = contrast_ratio(rgb, _WHITE), contrast_ratio(rgb, _INK)
-    if on_white >= on_ink:
-        return _fmt(0.985, 0.0, 0.0), on_white
-    return _fmt(0.145, 0.0, 0.0), on_ink
+def foreground_for(rgb: tuple[float, float, float]) -> tuple[str, float]:
+    """Light text or ink, whichever reads better on `rgb`, with the resulting ratio."""
+    on_light, on_ink = contrast_ratio(rgb, _LIGHT_TEXT), contrast_ratio(rgb, _INK)
+    if on_light >= on_ink:
+        return format_oklch(*FOREGROUND_ON_DARK), on_light
+    return format_oklch(*FOREGROUND_ON_LIGHT), on_ink
 
 
-def brand_tokens(primary_hex: str) -> BrandTokens:
+def brand_tokens(
+    primary_hex: str,
+    *,
+    dark_background: tuple[float, float, float] = DARK_BACKGROUND,
+    min_dark_lightness: float = 0.72,
+    min_dark_contrast: float = 0.0,
+) -> BrandTokens:
     """Derive light and dark `--primary`, `--primary-foreground` and `--ring`.
 
     Light mode keeps the brand colour exactly as given. Dark mode keeps hue and
-    chroma but raises lightness to at least 0.72, because a mid-dark brand colour
-    that works on white sinks into a near-black background.
+    chroma but raises lightness to at least `min_dark_lightness` (0.72 by
+    default), because a mid-dark brand colour that works on white sinks into a
+    near-black background.
+
+    A project whose surface *is* dark passes `min_dark_lightness=0` and a
+    `min_dark_contrast`: the brand colour is then lifted only as far as it needs
+    to be visible against `dark_background`, instead of being repainted pastel.
     """
     rgb = parse_hex(primary_hex)
     lightness, chroma, hue = rgb_to_oklch(rgb)
-    fg_light, contrast_light = _foreground_for(rgb)
+    fg_light, contrast_light = foreground_for(rgb)
 
-    dark_lightness = max(lightness, 0.72)
+    dark_lightness = max(lightness, min_dark_lightness)
     dark_rgb = oklch_to_rgb(dark_lightness, chroma, hue)
-    fg_dark, contrast_dark = _foreground_for(dark_rgb)
+    while contrast_ratio(dark_rgb, dark_background) < min_dark_contrast and dark_lightness < 0.99:
+        dark_lightness = min(dark_lightness + 0.01, 0.99)
+        dark_rgb = oklch_to_rgb(dark_lightness, chroma, hue)
+    fg_dark, contrast_dark = foreground_for(dark_rgb)
 
     return BrandTokens(
         light={
-            "--primary": _fmt(lightness, chroma, hue),
+            "--primary": format_oklch(lightness, chroma, hue),
             "--primary-foreground": fg_light,
-            "--ring": _fmt(min(max(lightness, 0.55), 0.75), chroma * 0.8, hue),
+            "--ring": format_oklch(min(max(lightness, 0.55), 0.75), chroma * 0.8, hue),
         },
         dark={
-            "--primary": _fmt(dark_lightness, chroma, hue),
+            "--primary": format_oklch(dark_lightness, chroma, hue),
             "--primary-foreground": fg_dark,
-            "--ring": _fmt(dark_lightness, chroma * 0.8, hue),
+            "--ring": format_oklch(dark_lightness, chroma * 0.8, hue),
         },
         contrast_light=contrast_light,
-        contrast_dark=min(contrast_dark, contrast_ratio(dark_rgb, _DARK_BACKGROUND)),
+        contrast_dark=min(contrast_dark, contrast_ratio(dark_rgb, dark_background)),
     )
 
 
-BRAND_BLOCK_START = "/* kiro:brand:start — generado por `make brand-colors`; no editar a mano */"
+BRAND_BLOCK_START = "/* kiro:brand:start — generado por `make design build`; no editar a mano */"
 BRAND_BLOCK_END = "/* kiro:brand:end */"
 
 

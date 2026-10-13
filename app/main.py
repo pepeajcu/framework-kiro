@@ -25,7 +25,7 @@ from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.csrf import CsrfCookieMiddleware, csrf_guard
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import auth, consent, health, notes, pages, seo
+from app.routers import auth, consent, design, health, notes, pages, seo
 from app.templating import STATIC_DIR, render
 
 
@@ -68,6 +68,9 @@ def create_app(settings: Settings | None = None, *, enforce_csrf: bool = True) -
     app.include_router(seo.router)
     app.include_router(notes.router)
     app.include_router(pages.router)
+    if settings.design_preview_enabled:
+        # Development only: in a deployed environment the route does not exist.
+        app.include_router(design.router)
 
     register_error_handlers(app)
     return app

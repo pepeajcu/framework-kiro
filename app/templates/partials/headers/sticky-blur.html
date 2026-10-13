@@ -1,0 +1,11 @@
+{# Arquetipo sticky-blur: barra translúcida, pegada arriba, con desenfoque.
+   El de partida de Kiro. El `backdrop-blur` solo en barras fijas o sticky, nunca
+   sobre contenido que hace scroll. #}
+<header class="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
+  <nav aria-label="Principal" class="mx-auto flex w-full {{ page_width | default('max-w-5xl') }} items-center justify-between px-4 py-3">
+    {% include "partials/brand_mark.html" %}
+    <div class="flex items-center gap-2">
+      {% include "partials/nav_auth.html" %}
+    </div>
+  </nav>
+</header>

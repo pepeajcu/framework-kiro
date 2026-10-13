@@ -52,5 +52,6 @@ exclude: |
   (?x)^(
     app/static/(css|js)/vendor/.*|
     app/templates/basecoat/.*|
-    migrations/versions/.*
+    migrations/versions/.*|
+    .claude/skills/kiro-design/references/(minimalist|soft|brutalist|redesign|brandkit)\.md
   )$

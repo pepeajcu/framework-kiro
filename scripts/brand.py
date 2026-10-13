@@ -2,10 +2,13 @@
 
     make logo src=./mi-logo.svg
     make logo src=https://example.com/logo.png
-    make brand-colors primary="#0F766E" [radius=0.5rem]
+    make brand-colors primary="#0F766E" [radius=0.5rem] [neutral=warm] [surface=cream]
+                      [secondary="#1E3A5F"]
 
-The logic lives in `app/branding.py` (pure, tested); this file only does the I/O.
-Both commands are idempotent: run them again with another value to replace it.
+The logic lives in `app/branding.py` and `app/design_engine/` (pure, tested); this
+file only does the I/O. `colors` is a shortcut: it writes the `[brand]` table of
+`design.toml` and runs `make design build`, so the contract and the CSS never
+disagree. Both commands are idempotent: run them again to replace the value.
 """
 
 from __future__ import annotations
@@ -20,17 +23,17 @@ from app.branding import (
     BRAND_DIR,
     LOGO_NAMES,
     MAX_LOGO_BYTES,
-    STATIC_DIR,
     BrandError,
-    apply_brand_block,
-    brand_tokens,
-    render_brand_block,
     validate_logo,
 )
-
-INPUT_CSS = STATIC_DIR / "css" / "input.css"
-# WCAG AA for normal text. Below this the button label is hard to read.
-MIN_CONTRAST = 4.5
+from app.design_engine.contract import (
+    contract_from_data,
+    contract_to_data,
+    dump_contract,
+    load_contract,
+)
+from app.design_engine.paths import Paths
+from scripts.design import build, print_report, write_atomically
 
 
 def _read_source(src: str) -> bytes:
@@ -71,22 +74,30 @@ def set_logo(src: str) -> None:
     print("se mostrará en la cabecera y como favicon; recarga la página")
 
 
-def set_colors(primary: str, radius: str | None) -> None:
-    tokens = brand_tokens(primary)
-    block = render_brand_block(tokens, radius=radius, primary_hex=primary)
-    INPUT_CSS.write_text(apply_brand_block(INPUT_CSS.read_text(encoding="utf-8"), block), "utf-8")
-
-    print(f"tokens escritos en {INPUT_CSS.relative_to(Path.cwd())}")
-    for mode, ratio in (("claro", tokens.contrast_light), ("oscuro", tokens.contrast_dark)):
-        verdict = "ok" if ratio >= MIN_CONTRAST else "BAJO"
-        print(f"  contraste del botón primario, modo {mode}: {ratio:.1f}:1 ({verdict})")
-    if min(tokens.contrast_light, tokens.contrast_dark) < MIN_CONTRAST:
-        print(
-            f"aviso: algún modo queda por debajo de {MIN_CONTRAST}:1 (WCAG AA). "
-            "Prueba un tono más oscuro o más claro de la marca",
-            file=sys.stderr,
-        )
-    print("ahora: make css")
+def set_colors(
+    primary: str,
+    *,
+    radius: str | None,
+    neutral: str | None,
+    surface: str | None,
+    secondary: str | None,
+    paths: Paths | None = None,
+) -> None:
+    """Write the `[brand]` table of design.toml and rebuild. Unset options keep their value."""
+    paths = paths or Paths()
+    data = contract_to_data(load_contract(paths.contract))
+    data["brand"]["primary"] = primary
+    for key, value in (
+        ("radius", radius),
+        ("neutral", neutral),
+        ("surface", surface),
+        ("secondary", secondary),
+    ):
+        if value is not None:
+            data["brand"][key] = value
+    contract = contract_from_data(data)
+    write_atomically(paths.contract, dump_contract(contract))
+    print_report(build(paths), paths)
 
 
 def main() -> int:
@@ -98,14 +109,23 @@ def main() -> int:
 
     colors = sub.add_parser("colors", help="escribir los tokens de color de la marca")
     colors.add_argument("--primary", required=True, help="hex del color de marca, ej. #0F766E")
-    colors.add_argument("--radius", help="radio de esquinas, ej. 0.5rem")
+    colors.add_argument("--radius", help="radio de esquinas, ej. 0.5rem o 0")
+    colors.add_argument("--neutral", choices=("pure", "warm", "cool", "tinted"), help="grises")
+    colors.add_argument("--surface", choices=("light", "cream", "dark"), help="superficie")
+    colors.add_argument("--secondary", help='segundo color de marca; "" para quitarlo')
 
     args = parser.parse_args()
     try:
         if args.command == "logo":
             set_logo(args.src)
         else:
-            set_colors(args.primary, args.radius)
+            set_colors(
+                args.primary,
+                radius=args.radius,
+                neutral=args.neutral,
+                surface=args.surface,
+                secondary=args.secondary,
+            )
     except BrandError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

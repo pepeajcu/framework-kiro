@@ -1,0 +1,118 @@
+/* Motion declarativo: el CSS de app/static/js/motion.js.
+ *
+ * REGLA: un estado oculto solo existe bajo `.js-motion`, la clase que pone el
+ * propio script en <html>. Sin JavaScript, con `prefers-reduced-motion` o si el
+ * script no carga, todo el contenido se ve tal cual lo mandó el servidor (SEO y
+ * accesibilidad: regla 3 de AGENTS.md).
+ *
+ * Solo se anima `transform` y `opacity`. Nada de `top`/`left`/`width`.
+ */
+
+:root {
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- reveal: aparece al entrar en pantalla ------------------------------- */
+.js-motion [data-motion="reveal"],
+.js-motion [data-motion="stagger"] > * {
+  opacity: 0;
+  transform: translate3d(0, var(--motion-distance, 1.25rem), 0);
+  transition:
+    opacity 0.7s var(--motion-ease),
+    transform 0.7s var(--motion-ease);
+}
+
+.js-motion [data-motion="reveal"] {
+  transition-delay: var(--motion-delay, 0s);
+}
+
+.js-motion [data-motion="reveal"].is-in,
+.js-motion [data-motion="stagger"].is-in > * {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- stagger: los hijos entran en cascada -------------------------------- */
+.js-motion [data-motion="stagger"] > * {
+  transition-delay: calc(var(--i, 0) * var(--motion-step, 0.08s));
+}
+
+/* --- split-reveal: el titular entra palabra a palabra -------------------- */
+.js-motion [data-motion="split-reveal"]:not(.m-ready),
+.js-motion [data-motion="count"]:not(.m-ready) {
+  visibility: hidden;
+}
+
+/* Fuera de la vista para lectores de pantalla: el texto original sigue ahí. */
+.m-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Cada palabra tiene una máscara (overflow) para que suba desde abajo. El
+ * relleno inferior deja sitio a los descendentes (g, y, p) sin cortarlos. */
+.m-split .m-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
+}
+
+.m-split .m-word > span {
+  display: inline-block;
+  transform: translate3d(0, 110%, 0);
+  transition: transform 0.8s var(--motion-ease);
+  transition-delay: calc(var(--motion-delay, 0s) + var(--i, 0) * 0.045s);
+}
+
+.m-split.is-in .m-word > span {
+  transform: none;
+}
+
+/* --- marquee: banda que corre sin parar ---------------------------------- */
+.js-motion [data-motion="marquee"] {
+  display: flex;
+  overflow: hidden;
+}
+
+.m-marquee-track {
+  display: flex;
+  flex: none;
+  gap: var(--motion-gap, 2rem);
+  padding-inline-end: var(--motion-gap, 2rem);
+  animation: m-marquee var(--motion-duration, 30s) linear infinite;
+}
+
+[data-motion="marquee"]:hover .m-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes m-marquee {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* --- Por si el visitante cambia la preferencia con la página abierta ----- */
+@media (prefers-reduced-motion: reduce) {
+  .js-motion [data-motion],
+  .js-motion [data-motion] > *,
+  .m-split .m-word > span {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    visibility: visible !important;
+  }
+
+  .m-marquee-track {
+    animation: none !important;
+  }
+}

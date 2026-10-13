@@ -34,11 +34,15 @@ directamente en el HTML, sin macro.
 
 ## Cambiar de tema
 
-Edita la línea del tema en `app/static/css/input.css` y recompila con `make css`:
+El tema es parte del contrato de diseño. Cámbialo en `design.toml` y recompila:
 
-```css
-@import "./vendor/basecoat/basecoat-nova.css";   /* vega | nova | maia | lyra | mira | luma | sera | rhea */
+```bash
+make design-set v="basecoat.theme=nova"     # vega | nova | maia | lyra | mira | luma | sera | rhea
 ```
+
+Eso reescribe la línea `@import` de `app/static/css/input.css` (dentro del bloque
+`kiro:theme`, que genera `make design build`) y corre `make css`. No cambies la
+línea a mano: el siguiente build la devolvería al tema de `design.toml`.
 
 ## Actualizar Basecoat
 

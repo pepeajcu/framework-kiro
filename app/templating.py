@@ -17,8 +17,10 @@ from fastapi.templating import Jinja2Templates
 
 from app.branding import find_logo, logo_path_relative_to_static
 from app.config import get_settings
+from app.design_engine.runtime import DesignProxy
 from app.services.consent import CONSENT_COOKIE
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -64,6 +66,11 @@ def brand_logo() -> str | None:
 
 
 templates.env.globals["settings"] = get_settings()
+# What `design.toml` decides about markup (header archetype, dark surface, motion
+# scripts). Re-read on change in development; resolved once in production.
+templates.env.globals["design"] = DesignProxy(
+    PROJECT_ROOT, STATIC_DIR, watch=not get_settings().is_production
+)
 templates.env.globals["asset"] = asset
 templates.env.globals["now_year"] = now_year
 templates.env.globals["brand_logo"] = brand_logo

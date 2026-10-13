@@ -1,40 +1,12 @@
-{# Cabecera del sitio. Es un partial para poder reemplazarla por proyecto
-   sin tocar base.html. #}
-<header class="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
-  <nav class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-    {# El logo vive en app/static/brand/ (make logo src=...). Sin logo, solo el
-       nombre. Altura fija: así el layout no salta al cargar la imagen. #}
-    {% set logo = brand_logo() %}
-    <a href="/" class="text-foreground flex items-center gap-2.5 text-base font-semibold tracking-tight">
-      {% if logo %}
-        <img src="{{ logo }}" alt="" width="32" height="32" class="size-8 shrink-0 object-contain">
-      {% endif %}
-      <span>{{ settings.app_name }}</span>
-    </a>
+{# Cabecera del sitio. Elige el arquetipo `[structure] header` de design.toml:
 
-    <div class="flex items-center gap-2">
-      {% block nav_items %}{% endblock %}
+     sticky-blur      barra translúcida pegada arriba (el arquetipo de partida)
+     floating-pill    píldora flotante, centrada
+     industrial-rule  barra plana con regla gruesa y celdas, estilo imprenta
+     terminal-bar     barra invertida en monoespaciada
+     custom           partials/headers/custom.html: el tuyo
 
-      {# `user` lo inyecta render() desde request.state, así que basta con que
-         el handler de la página declare OptionalUser o CurrentUser. #}
-      {% if user %}
-        <span class="text-muted-foreground hidden text-sm sm:inline">{{ user.email }}</span>
-        {# Parte del ejemplo trabajado del golden path — ver
-           app/routers/notes.py. Se borra junto con el resto del ejemplo. #}
-        <a class="btn" data-variant="ghost" data-size="sm" href="/notes">Notas</a>
-        {# Salir es POST, no un enlace: un <a> lo siguen los prefetchers del
-           navegador y los escáneres de correo, cerrando sesiones sin que nadie
-           las cierre. #}
-        <form method="post" action="/logout">
-          {% include "components/csrf_field.html" %}
-          <button class="btn" data-variant="ghost" data-size="sm" type="submit">Salir</button>
-        </form>
-      {% else %}
-        <a class="btn" data-variant="ghost" data-size="sm" href="/login">Entrar</a>
-        {% if settings.allow_registration %}
-          <a class="btn" data-variant="primary" data-size="sm" href="/register">Crear cuenta</a>
-        {% endif %}
-      {% endif %}
-    </div>
-  </nav>
-</header>
+   Cada uno es un archivo en partials/headers/ que solo trata de lo visual; la
+   sesión (usuario, salir, entrar) está en partials/nav_auth.html. Para
+   cambiar de arquetipo no se edita esto: se cambia design.toml. #}
+{% include ["partials/headers/" ~ design.header ~ ".html", "partials/headers/sticky-blur.html"] %}

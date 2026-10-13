@@ -60,6 +60,13 @@ jobs:
         # Si Tailwind falla, la app arranca pero sin estilos. Mejor que falle aquí.
         run: uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
 
+      - name: Contrato de diseño
+        # design.toml compila, input.css está al día con él y las fuentes y
+        # librerías de motion que declara existen. `--allow-defaults` porque el
+        # framework se distribuye sin identidad elegida; en un proyecto con
+        # identidad, esos mismos errores siguen fallando.
+        run: uv run python -m scripts.design check --allow-defaults
+
       - name: Migraciones
         run: uv run alembic upgrade head
 

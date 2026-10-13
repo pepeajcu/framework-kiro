@@ -1,0 +1,23 @@
+{# Arquetipo terminal-bar: barra invertida (fondo = color de texto) en
+   monoespaciada, con un prompt. Los botones van en `outline`, que sobre esta
+   barra se leen como fichas claras. El cursor parpadea solo si el visitante no
+   pidió menos movimiento.
+
+   En una superficie oscura la inversión sería una franja blanca: bajo `dark`
+   pasa a ser una barra de tarjeta con una regla debajo. #}
+{% set mark_class = "text-sm font-medium" %}
+{% set mark_logo_class = "size-6 rounded-sm bg-background p-0.5" %}
+{% set nav_variant = "outline" %}
+{% set nav_muted = "text-background/70 dark:text-muted-foreground" %}
+<header class="bg-foreground text-background dark:bg-card dark:text-foreground sticky top-0 z-40 font-mono text-sm dark:border-b">
+  <nav aria-label="Principal" class="mx-auto flex w-full {{ page_width | default('max-w-5xl') }} items-center justify-between gap-3 px-4 py-2">
+    <div class="flex items-center gap-2">
+      <span class="text-background/60 dark:text-muted-foreground" aria-hidden="true">$</span>
+      {% include "partials/brand_mark.html" %}
+      <span class="bg-background dark:bg-primary h-4 w-2 motion-safe:animate-pulse" aria-hidden="true"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% include "partials/nav_auth.html" %}
+    </div>
+  </nav>
+</header>

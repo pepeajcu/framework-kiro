@@ -67,10 +67,14 @@ uv run pre-commit install
 Abre Claude Code u OpenCode en el proyecto y corre `/kiro-init`. Te entrevista
 para rellenar `PROJECT.md` (entidades, reglas de negocio, decisiones ya
 tomadas — es lo que el agente lee para no inventarse tu dominio) y `DESIGN.md`
-(colores de marca, estilo —minimalista, premium, brutalista…—, tipografía y
-logo; es lo que evita que tu proyecto se vea igual que todos). Si tienes logo,
-dale la ruta o la URL: se guarda en `app/static/brand/` y aparece en la
-cabecera y como favicon. Después te explica las dos formas de pedir una feature a partir de ahí:
+(colores de marca, estilo —minimalista, premium, brutalista…—, tipografía,
+arquetipos, **firma visual** y logo; es lo que evita que tu proyecto se vea
+igual que todos). Para el diseño te propone **tres direcciones contrastadas**
+(segura, atrevida, experimental): elige una y la aplica en `design.toml`
+(`make design build`), de modo que puedes verla en `/_design` antes de seguir.
+Si tienes logo, dale la ruta o la URL: se guarda en `app/static/brand/` y
+aparece en la cabecera y como favicon. Después te explica las dos formas de
+pedir una feature a partir de ahí:
 
 - **Golden path directo** — para un cambio normal: lo pides tal cual y el
   agente sigue solo las 8 capas del golden path (`kiro-feature`).
