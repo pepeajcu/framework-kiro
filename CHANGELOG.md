@@ -11,7 +11,7 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
-## [Sin publicar]
+## [1.1.0] — 2026-10-12 · Identidad visual
 
 ### Añadido
 
