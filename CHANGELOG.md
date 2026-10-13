@@ -11,9 +11,7 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
-## [Sin publicar]
-
-### 1.2.0 · Motor de diseño
+## [1.2.0] — 2026-10-13 · Motor de diseño
 
 Cierra el problema que dejó la 1.1: la identidad solo cambiaba tres de unos treinta
 tokens y la estructura de la página era siempre la misma, así que dos proyectos
@@ -21,7 +19,7 @@ con intenciones distintas salían casi iguales. Ver
 [ADR-0014](docs/decisions/0014-motor-de-diseno.md) y
 [ADR-0015](docs/decisions/0015-motion-vendorizado-por-niveles.md).
 
-#### Añadido
+### Añadido
 
 - `[SEGURO]` **`design.toml`**, el contrato de máquina de la identidad (color,
   neutros, superficie, radio, fuentes, tema de Basecoat, cabecera, nivel de
@@ -69,7 +67,7 @@ con intenciones distintas salían casi iguales. Ver
   **`/kiro-redesign`** (audita una app ya construida sin cambiar su comportamiento).
   `/kiro-init` propone ahora **tres direcciones contrastadas**.
 
-#### Cambiado
+### Cambiado
 
 - `[MIGRACIÓN]` Las páginas extienden `layouts/app.html` (o `landing.html`) en
   vez de `base.html`. Una página que siga extendiendo `base.html` funciona igual.
@@ -90,8 +88,12 @@ con intenciones distintas salían casi iguales. Ver
   Grotesk (no están en Fontsource) y avisa de que la CSP bloquea las imágenes
   externas.
 
-#### Corregido
+### Corregido
 
+- `[SEGURO]` **Dependencias:** `urllib3` 2.7.0 a 2.8.0 (PYSEC-2026-4175, -4176 y
+  -4177). Llegaba como dependencia transitiva de desarrollo (`pip-audit` →
+  `requests`) y hacía fallar el paso `pip-audit` de CI. Se sube solo ese paquete
+  en `uv.lock`; `make audit` queda limpio.
 - `[SEGURO]` Un `<section class="dark">` dentro de una página clara conservaba los
   colores claros (los tokens `--color-*` de Tailwind se resuelven en `:root`). El
   compilador re-mapea el tema bajo `.dark`, así que una banda oscura funciona.

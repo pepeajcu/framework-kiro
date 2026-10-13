@@ -126,7 +126,7 @@ Published. See [`CHANGELOG.md`](CHANGELOG.md) and the
 | v0.3.0 | Server-side analytics and SEO | Published |
 | v1.0.0 | Documentation, complete example, public release | Published |
 | v1.1.0 | Visual identity: `DESIGN.md`, brand colour and logo | Published |
-| v1.2.0 | Design engine: `design.toml`, layouts, fonts, motion, `/_design` | Unreleased |
+| v1.2.0 | Design engine: `design.toml`, layouts, fonts, motion, `/_design` | Published |
 
 ## Documentation
 

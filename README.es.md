@@ -125,7 +125,7 @@ Publicado. Ver [`CHANGELOG.md`](CHANGELOG.md) y el
 | v0.3.0 | Analítica server-side y SEO | Publicada |
 | v1.0.0 | Documentación, ejemplo completo, release público | Publicada |
 | v1.1.0 | Identidad visual: `DESIGN.md`, color de marca y logo | Publicada |
-| v1.2.0 | Motor de diseño: `design.toml`, layouts, fuentes, motion, `/_design` | Sin publicar |
+| v1.2.0 | Motor de diseño: `design.toml`, layouts, fuentes, motion, `/_design` | Publicada |
 
 ## Documentación
 

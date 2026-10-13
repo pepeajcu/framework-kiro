@@ -502,5 +502,9 @@ ADR-0015, que son el registro de las decisiones.
 - Imagen de producción construida con Docker: contiene `design.toml` y los
   assets, y `/_design` no existe en ella.
 - Los fragmentos de `archetypes.md` se renderizaron en una página de laboratorio.
-- Pendiente para quien publique: tag y `CHANGELOG` (la entrada está en «Sin
-  publicar»), y revisar los avisos de contraste del color de marca que se elija.
+- Publicado como **v1.2.0** (2026-10-13), junto con la corrección de `urllib3`
+  (2.7.0 a 2.8.0) que dejaba rojo el paso `pip-audit` de CI. Queda como mejora de
+  herramientas ajena a este plan: el hook de `mypy` de `.pre-commit-config.yaml`
+  trae una lista de `additional_dependencies` desactualizada (le faltan `httpx2`,
+  `argon2`, `itsdangerous`, `jinja2` y `uuid-utils`) y falla en su entorno aislado;
+  `make types` es la comprobación fiable.

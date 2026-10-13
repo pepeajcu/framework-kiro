@@ -65,7 +65,7 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] Decidir el nombre público definitivo (ADR-0006) — se conserva "Kiro"
 - [x] Tag y publicación
 
-## v1.2.0 — Motor de diseño  *(implementada, sin publicar)*
+## v1.2.0 — Motor de diseño  *(publicada — 2026-10-13)*
 
 - [x] `design.toml` y compilador puro (`app/design_engine/`): paleta completa en
       OKLCH con contraste AA resuelto, fuentes locales, tema, cabecera, motion
@@ -76,7 +76,7 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] `/_design` y los comandos `/kiro-design-review` y `/kiro-redesign`
 - [x] Once estilos, catálogos de arquetipos y parejas tipográficas
 - [x] ADRs 0014–0015
-- [ ] Etiquetar y publicar
+- [x] Tag y publicación
 
 ## Fuera de alcance por ahora
 
