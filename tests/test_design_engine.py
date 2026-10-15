@@ -520,7 +520,9 @@ def test_three_contracts_differ_in_surface_type_and_theme_not_only_in_colour() -
     }
 
     def declared(css: str, token: str) -> str:
-        return re.search(rf"{re.escape(token)}: ([^;]+);", css.split(".dark {")[0]).group(1)  # type: ignore[union-attr]
+        brand_block = find_block(css, "brand") or ""
+        light = brand_block.split("\n.dark {")[0]
+        return re.search(rf"{re.escape(token)}: ([^;]+);", light).group(1)  # type: ignore[union-attr]
 
     for token in ("--background", "--foreground", "--border", "--radius"):
         values = {declared(css, token) for css in outputs.values()}
@@ -623,7 +625,8 @@ def test_every_preset_is_a_valid_readable_contract(name: str) -> None:
 
 def test_presets_differ_on_several_axes_not_one() -> None:
     """A preset that only changes a colour is the problem this engine exists to fix."""
-    contracts = [p.contract for p in PRESETS.values()]
+    # `estandar-shadcn` is the framework's own look on purpose: it is not an identity.
+    contracts = [p.contract for n, p in PRESETS.items() if n != "estandar-shadcn"]
 
     assert len({c.basecoat.theme for c in contracts}) >= 5
     assert len({c.structure.header for c in contracts}) >= 4

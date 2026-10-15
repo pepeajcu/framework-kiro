@@ -24,3 +24,11 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0013](0013-identidad-visual-con-taste-skill.md) | Identidad visual: `DESIGN.md`, tokens de marca y taste-skill | Aceptada |
 | [0014](0014-motor-de-diseno.md) | Motor de diseño: `design.toml`, compilador, layouts y percepción | Aceptada |
 | [0015](0015-motion-vendorizado-por-niveles.md) | Motion declarativo, por niveles y vendorizado bajo demanda | Aceptada |
+| [0016](0016-make-check-es-ci-y-reglas-comprobadas.md) | `make check` es la puerta de CI y las reglas de AGENTS.md las comprueba una máquina | Aceptada |
+| [0017](0017-errores-y-avisos-de-htmx.md) | Errores y avisos de HTMX: un contrato, no una página por respuesta | Aceptada |
+| [0018](0018-constitucion-de-diseno-y-tuberia-unica.md) | Constitución de diseño y una sola tubería hacia el contrato | Aceptada |
+| [0019](0019-uupm-vendorizado-con-solapamiento.md) | uupm vendorizado, traducido una vez a Kiro, y el suelo comprobado por una máquina | Aceptada |
+| [0020](0020-kit-ios-superficie-auto-y-fuente-del-sistema.md) | Kit iOS, `surface = "auto"` y `fallback = "system"` | Aceptada |
+| [0021](0021-referencias-externas-un-lector-y-candados.md) | Referencias externas: un lector tolerante, skillui como herramienta opcional y candados | Aceptada |
+| [0022](0022-formularios-con-memoria-y-avisos-tras-redireccion.md) | Formularios con memoria y avisos tras una redirección | Aceptada |
+| [0023](0023-densidad-compilada-y-estados.md) | Densidad compilada y los tres estados | Aceptada |

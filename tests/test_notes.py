@@ -41,7 +41,9 @@ def test_deleting_a_note_removes_it(logged_in_client, db_session, user):
     response = logged_in_client.delete(f"/notes/{note.id}")
 
     assert response.status_code == 200
-    assert response.text == ""
+    # The note's element is replaced by nothing, and a toast says what happened.
+    assert "HX-Reswap" not in response.headers
+    assert "Nota eliminada" in response.text and 'hx-swap-oob="beforeend"' in response.text
     assert NoteRepository(db_session).get(note.id) is None
 
 

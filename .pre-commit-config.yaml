@@ -27,20 +27,24 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+  # Hooks locales: corren en el entorno de `uv`, el mismo que `make check`. El hook
+  # de mypy de pre-commit.com monta un entorno aparte con una lista de
+  # dependencias que hay que mantener a mano; se desfasó (le faltaban httpx2,
+  # argon2, itsdangerous...) y fallaba en un entorno que `make types` no usa.
+  - repo: local
     hooks:
       - id: mypy
+        name: mypy (strict)
+        entry: uv run mypy app scripts/archcheck.py
+        language: system
+        pass_filenames: false
+        files: ^(app|scripts)/.*\.py$
+      - id: archcheck
+        name: reglas de arquitectura (AGENTS.md)
+        entry: uv run python -m scripts.archcheck
+        language: system
+        pass_filenames: false
         files: ^app/
-        args: [--strict]
-        # mypy necesita las dependencias reales para comprobar sus tipos; sin
-        # esto trataría fastapi y sqlalchemy como Any y no detectaría nada.
-        additional_dependencies:
-          - fastapi
-          - pydantic
-          - pydantic-settings
-          - sqlalchemy[mypy]
-          - types-passlib
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
@@ -53,5 +57,6 @@ exclude: |
     app/static/(css|js)/vendor/.*|
     app/templates/basecoat/.*|
     migrations/versions/.*|
-    .claude/skills/kiro-design/references/(minimalist|soft|brutalist|redesign|brandkit)\.md
+    .claude/skills/kiro-design/references/(minimalist|soft|brutalist|redesign|brandkit)\.md|
+    .claude/skills/kiro-design/uupm/.*
   )$

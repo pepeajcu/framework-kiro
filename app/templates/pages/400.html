@@ -1,0 +1,20 @@
+{#
+  400 — la petición llegó mal formada: un identificador que no es un
+  identificador, un valor fuera de las opciones. Antes salía un JSON de FastAPI
+  (422), que en una web con páginas HTML no le sirve a nadie.
+#}
+{% extends "layouts/app.html" %}
+{% block title %}Solicitud no válida — {{ settings.app_name }}{% endblock %}
+{% block description %}La solicitud no es válida.{% endblock %}
+
+{% block content %}
+<section class="py-16 text-center">
+  <p class="text-muted-foreground font-mono text-sm">400</p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight">Solicitud no válida</h1>
+  <p class="text-muted-foreground mx-auto mt-3 max-w-md text-pretty">
+    No hemos entendido lo que se pidió. Si llegaste desde un enlace, puede que
+    esté incompleto o mal copiado.
+  </p>
+  <a href="/" class="btn mt-6" data-variant="primary">Volver al inicio</a>
+</section>
+{% endblock %}

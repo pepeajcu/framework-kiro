@@ -17,7 +17,7 @@ import secrets
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from fastapi import Response
-from itsdangerous import BadSignature, URLSafeSerializer
+from itsdangerous import BadSignature, URLSafeSerializer, URLSafeTimedSerializer
 
 from app.config import Settings
 
@@ -37,6 +37,11 @@ SESSION_COOKIE_NAME = "session"
 # though they share SECRET_KEY: a session cookie can never be replayed as
 # anything else.
 _SESSION_SALT = "kiro.session"
+_FLASH_SALT = "kiro.flash"
+
+FLASH_COOKIE_NAME = "flash"
+#: A message that nobody has read after this long is stale, not a message.
+FLASH_MAX_AGE_SECONDS = 120
 
 
 # --- Passwords ---------------------------------------------------------------
@@ -142,6 +147,31 @@ def set_session_cookie(response: Response, token: str, settings: Settings) -> No
         samesite="lax",
         path="/",
     )
+
+
+# --- Flash messages ------------------------------------------------------------
+
+
+def sign_flash(message: dict[str, str], settings: Settings) -> str:
+    """Sign a one-time message for the next page (post/redirect/get)."""
+    return URLSafeTimedSerializer(settings.secret_key, salt=_FLASH_SALT).dumps(message)
+
+
+def unsign_flash(value: str, settings: Settings) -> dict[str, str] | None:
+    """The message in a flash cookie, or None if it was forged, rotated or stale.
+
+    Its own salt: a flash cookie can never be replayed as a session, and the other way
+    round. The text is shown through Jinja, which escapes it.
+    """
+    try:
+        data = URLSafeTimedSerializer(settings.secret_key, salt=_FLASH_SALT).loads(
+            value, max_age=FLASH_MAX_AGE_SECONDS
+        )
+    except BadSignature:
+        return None
+    if not isinstance(data, dict) or not all(isinstance(v, str) for v in data.values()):
+        return None
+    return data
 
 
 def clear_session_cookie(response: Response) -> None:

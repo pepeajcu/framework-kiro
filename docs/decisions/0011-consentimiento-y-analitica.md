@@ -31,7 +31,7 @@ no.
 ## Decisión
 
 **Cookie propia (`cookie_consent`), sin CMP.** `app/services/consent.py`
-expone `has_marketing_consent(request)`; el banner (`partials/cookie_consent.html`)
+expone `has_marketing_consent(cookie)`; el banner (`partials/cookie_consent.html`)
 es HTMX puro, sin fallback sin JavaScript — si GTM no puede cargar sin JS,
 tampoco hace falta que el banner funcione sin él. El valor por defecto sin
 decisión es "no": `has_marketing_consent` exige `"accepted"` explícito.
@@ -41,7 +41,7 @@ Ese flag gatilla dos cosas, no solo una:
 - El snippet de GTM en `base.html` (`settings.gtm_id and consent ==
   "accepted"`).
 - Las llamadas a GA4/Meta desde el servidor. `app/routers/auth.py` comprueba
-  `has_marketing_consent(request)` antes de programar el evento — sin
+  `has_marketing_consent(cookie)` antes de programar el evento — sin
   consentimiento, ni siquiera se construye el `AnalyticsEvent`.
 
 **`app/analytics/` calca la forma de `app/emails/`** (`Protocol` +

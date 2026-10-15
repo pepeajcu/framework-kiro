@@ -29,6 +29,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# surface = "auto": avisa al navegador desde el principio de que la página admite
+     los dos esquemas, para que el lienzo no parpadee en blanco en un sistema oscuro. #}
+  {% if design.auto %}<meta name="color-scheme" content="light dark">{% endif %}
+
+  {# Qué respuestas intercambia HTMX. Por defecto ignora todo 4xx y 5xx, y
+     entonces un formulario que responde 400 con sus errores, o un 403 con su
+     aviso, no se ve. Se intercambian solo los códigos que esta app emite (los
+     que dibujan los manejadores de app/main.py y los formularios); un 502 de un
+     proxy sigue sin tocar la página. La lista se evalúa en orden y el primer
+     patrón que coincide manda. Si emites un código nuevo, añádelo aquí. #}
+  <meta name="htmx-config" content='{"responseHandling": [
+    {"code": "^204$", "swap": false},
+    {"code": "^[23]..$", "swap": true},
+    {"code": "^(400|403|404|405|409|422|429|500)$", "swap": true, "error": true},
+    {"code": "^[45]..$", "swap": false, "error": true}
+  ]}'>
 
   <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{% endblock %}">
@@ -89,6 +105,8 @@
      interactuar, sin bloquear el primer render. #}
   <script src="{{ asset('js/vendor/htmx.min.js') }}" defer></script>
   <script src="{{ asset('js/vendor/basecoat.min.js') }}" defer></script>
+  {# Avisos que el servidor no puede dar: fallo de red, timeout, un 502 de un proxy. #}
+  <script src="{{ asset('js/kiro-htmx.js') }}" defer></script>
 
   {% block head_extra %}{% endblock %}
 </head>
@@ -105,6 +123,11 @@
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   {% endif %}
 
+  {# Para quien navega con teclado o lector de pantalla: salta la cabecera. Solo se
+     ve al recibir el foco. El destino es el <main id="main"> de los layouts. #}
+  <a href="#main"
+     class="bg-background text-foreground ring-ring sr-only rounded-md px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:ring-2">Saltar al contenido</a>
+
   {% block layout %}
     {% block header %}{% include "partials/header.html" %}{% endblock %}
 
@@ -115,9 +138,14 @@
     {% block footer %}{% include "partials/footer.html" %}{% endblock %}
   {% endblock %}
 
-  {# Destino de los toasts de Basecoat. Los fragmentos HTMX pueden inyectar
-     mensajes aquí con hx-swap-oob. #}
-  <div id="toaster" class="toaster"></div>
+  {# Destino de los toasts de Basecoat. Los fragmentos HTMX inyectan mensajes aquí con
+     hx-swap-oob (app/hypermedia.py: toast_response); el aviso que dejó la petición
+     anterior, tras un POST/redirect/GET, llega como `flash` y se pinta ya aquí. Basecoat
+     lo inicializa y lo cierra solo. El texto pasa por Jinja: se escapa. #}
+  {% from "basecoat/toast.html.jinja" import toast %}
+  <div id="toaster" class="toaster">
+    {% if flash %}{{ toast(category=flash.category, title=flash.title, description=flash.description or "") }}{% endif %}
+  </div>
 
   {% if consent is none %}
     {% include "partials/cookie_consent.html" %}

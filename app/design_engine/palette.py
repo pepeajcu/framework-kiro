@@ -109,6 +109,8 @@ class Palette:
     dark_only: bool
     pairs: tuple[ContrastPair, ...]
     warnings: tuple[str, ...]
+    #: `surface = "auto"`: light by default, dark when the system asks (no selector).
+    auto: bool = False
 
     @property
     def failures(self) -> tuple[ContrastPair, ...]:
@@ -351,7 +353,7 @@ def _secondary_group(
     return values["--primary"], values["--primary-foreground"]
 
 
-def _rgb_of(css_colour: str) -> Rgb:
+def token_rgb(css_colour: str) -> Rgb:
     """Parse back an `oklch(L C H)` we wrote ourselves."""
     inner = css_colour.removeprefix("oklch(").removesuffix(")").split("/")[0].split()
     return oklch_to_rgb(float(inner[0]), float(inner[1]), float(inner[2]))
@@ -419,6 +421,7 @@ def derive_palette(brand: Brand) -> Palette:
         dark_only=dark_only,
         pairs=tuple(pairs),
         warnings=tuple(warnings),
+        auto=brand.surface == "auto",
     )
 
 
@@ -444,7 +447,7 @@ def _audit(mode: Literal["light", "dark"], tokens: dict[str, str]) -> list[Contr
     pairs: list[ContrastPair] = []
     for required, group in ((True, _REQUIRED), (False, _ADVISORY)):
         for foreground, background in group:
-            ratio = contrast_ratio(_rgb_of(tokens[foreground]), _rgb_of(tokens[background]))
+            ratio = contrast_ratio(token_rgb(tokens[foreground]), token_rgb(tokens[background]))
             pairs.append(ContrastPair(mode, foreground, background, ratio, required))
     return pairs
 
@@ -492,11 +495,46 @@ def render_palette_block(palette: Palette, *, radius: str, source: str = "") -> 
     # how a light site gets a dark hero or footer.
     dark = dict(palette.dark)
     dark.update({f"--color-{name.removeprefix('--')}": f"var({name})" for name in palette.dark})
+    if palette.auto:
+        # Light unless the system asks for dark, and the browser's own controls
+        # (scrollbars, date pickers) follow the same preference.
+        light["color-scheme"] = "light dark"
 
     origin = f" /* {source} */" if source else ""
     return (
         f"{BRAND_BLOCK_START}\n"
         f":root {{{origin}\n{_declarations(light)}\n}}\n\n"
         f".dark {{\n{_declarations(dark)}\n}}\n"
+        f"{_auto_dark(palette)}"
         f"{BRAND_BLOCK_END}"
     )
+
+
+# `dark:` variants of Basecoat follow `html.dark`. With `surface = "auto"` the system
+# decides, so the variant is redefined to match either the class (a dark band inside a
+# light page) or the media query: no script, no flash of the wrong theme.
+_AUTO_VARIANT = """\
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    @slot;
+  }
+}
+"""
+
+
+def _auto_dark(palette: Palette) -> str:
+    """The dark tokens under `prefers-color-scheme`, for `surface = "auto"`; else nothing."""
+    if not palette.auto:
+        return ""
+    return (
+        "\n@media (prefers-color-scheme: dark) {\n"
+        f"  :root {{\n{_indent(_declarations(palette.dark))}\n  }}\n}}\n\n"
+        f"{_AUTO_VARIANT}"
+    )
+
+
+def _indent(text: str) -> str:
+    return "\n".join(f"  {line}" if line else line for line in text.splitlines())

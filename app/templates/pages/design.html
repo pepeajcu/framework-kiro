@@ -158,7 +158,7 @@
 
 {% call section("tipografia", "Tipografía", "La fuente de titulares (h1–h3), la del texto y la monoespaciada.") %}
   <div class="grid gap-8 lg:grid-cols-2">
-    <div class="space-y-3">
+    <div class="min-w-0 space-y-3">
       <h1 class="text-5xl tracking-tight">Titular uno</h1>
       <h2 class="text-3xl tracking-tight">Titular dos</h2>
       <h3 class="text-xl">Titular tres</h3>
@@ -172,7 +172,7 @@
       </p>
       <p class="font-mono text-sm">const identidad = "mono"; // 0123456789</p>
     </div>
-    <div class="space-y-1">
+    <div class="min-w-0 space-y-1">
       {% for size in ["text-6xl", "text-5xl", "text-4xl", "text-3xl", "text-2xl", "text-xl", "text-lg", "text-base", "text-sm", "text-xs"] %}
       <div class="flex items-baseline gap-4">
         <span class="text-muted-foreground w-20 shrink-0 font-mono text-xs">{{ size }}</span>
@@ -275,6 +275,44 @@
     </div>
   </div>
 {% endcall %}
+
+{# El kit de la plataforma, si el proyecto tiene uno: lo que los tokens no enseñan. #}
+{% if contract.structure.kit == "ios" %}
+{% from "components/ios.html.jinja" import large_title, grouped_list, list_row, segmented, tab_bar, sheet, sheet_trigger %}
+{% call section("kit", "Kit iOS", "Escala tipográfica de Apple, listas agrupadas, control segmentado, materiales, hoja y barra de pestañas. Mira la página a 375 px.") %}
+  <div class="ios-grouped border-border -mx-4 rounded-xl border px-0 pb-6">
+    {{ large_title("Ajustes", subtitle="Así se ve la escala de Dynamic Type a tamaño real.") }}
+    {% call grouped_list(header="Cuenta", footer="Pie de grupo: el texto pequeño que explica lo de arriba.") %}
+      {{ list_row("Perfil", detail="Ana", href="#kit", chevron=True) }}
+      {{ list_row("Notificaciones", detail="Activadas", href="#kit", chevron=True) }}
+      {% call list_row("Modo avión") %}<input class="input" type="checkbox" role="switch" aria-label="Modo avión">{% endcall %}
+      {{ list_row("Cerrar sesión", destructive=True) }}
+    {% endcall %}
+    <div class="ios-page">
+      {{ segmented("vista", "Vista", [{"value": "lista", "label": "Lista"}, {"value": "mapa", "label": "Mapa"}, {"value": "ajustes", "label": "Ajustes"}], selected="lista") }}
+    </div>
+    <div class="ios-page mt-6 flex flex-wrap items-center gap-3">
+      {{ sheet_trigger("kit-sheet", "Abrir una hoja") }}
+      <span class="ios-footnote ios-secondary">Una hoja es un &lt;dialog&gt; nativo.</span>
+    </div>
+    <div class="ios-page mt-6 space-y-1">
+      <p class="ios-large-title">Large title 34</p>
+      <p class="ios-title-1">Title 1, 28</p>
+      <p class="ios-title-2">Title 2, 22</p>
+      <p class="ios-headline">Headline 17 semibold</p>
+      <p>Body 17: el texto de lectura por defecto del kit.</p>
+      <p class="ios-callout">Callout 16</p>
+      <p class="ios-subhead ios-secondary">Subhead 15</p>
+      <p class="ios-footnote ios-secondary">Footnote 13</p>
+      <p class="ios-caption ios-secondary">Caption 12</p>
+    </div>
+  </div>
+  {% call sheet("kit-sheet", "Una hoja") %}
+    <p class="ios-secondary">Contenido de la hoja. Se cierra con el botón, con Escape o pulsando fuera.</p>
+  {% endcall %}
+  {{ tab_bar([{"href": "#kit", "label": "Inicio"}, {"href": "#tokens", "label": "Tokens"}, {"href": "#botones", "label": "Botones"}], "#kit") }}
+{% endcall %}
+{% endif %}
 
 {% call section("hero", "Hero de prueba", "Un titular a tamaño real: es donde la tipografía y el color se juzgan de verdad.") %}
   <div class="bg-card text-card-foreground border-border overflow-hidden rounded-xl border">

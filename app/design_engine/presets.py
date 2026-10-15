@@ -23,9 +23,11 @@ from app.design_engine.contract import (
     DesignError,
     FontFace,
     Motion,
+    Rules,
     Structure,
     Typography,
 )
+from app.design_engine.rules import GENERIC_PATTERNS
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,39 @@ def _face(name: str, *weights: int, fallback: str | None = None) -> FontFace:
 
 
 PRESETS: dict[str, Preset] = {
+    # The Basecoat look, chosen on purpose. It is the only preset that is not a
+    # distinct identity: it exists so that "minimal, shadcn standard" is something a
+    # project can ask for (and say it asked for), instead of what it ends up with
+    # by not choosing. It allows the generic-pattern rules; accessibility and the
+    # rest of the floor still apply.
+    "estandar-shadcn": Preset(
+        name="estandar-shadcn",
+        variance=2,
+        motion=3,
+        density=5,
+        reads_as="El aspecto Basecoat de serie, elegido a propósito: neutro, sin firma propia",
+        reference="estandar-shadcn.md",
+        contract=DesignContract(rules=Rules(allow=GENERIC_PATTERNS)),
+    ),
+    # Apple's look, on the web: the iOS kit (type scale, grouped lists, materials, tab
+    # bar, sheets), San Francisco on Apple devices and Inter everywhere else, a
+    # system-following light or dark surface. The blue is #0066CC, not Apple's system
+    # blue (#007AFF), which does not reach AA with a white button label.
+    "ios": Preset(
+        name="ios",
+        variance=3,
+        motion=5,
+        density=4,
+        reads_as="iOS: barras translúcidas, listas agrupadas, claro u oscuro del dispositivo",
+        reference="ios.md",
+        contract=DesignContract(
+            brand=Brand(primary="#0066CC", neutral="cool", surface="auto", radius="0.75rem"),
+            typography=Typography(body=_face("Inter", 400, 600, fallback="system")),
+            basecoat=Basecoat(theme="maia"),
+            motion=Motion(level=5),
+            structure=Structure(header="ios-bar", kit="ios", density=4),
+        ),
+    ),
     "minimalista": Preset(
         name="minimalista",
         variance=5,
@@ -61,7 +96,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="nova"),
             motion=Motion(level=3),
-            structure=Structure(header="sticky-blur"),
+            structure=Structure(header="sticky-blur", density=2),
         ),
     ),
     "suave-premium": Preset(
@@ -79,7 +114,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="luma"),
             motion=Motion(level=6),
-            structure=Structure(header="floating-pill"),
+            structure=Structure(header="floating-pill", density=3),
         ),
     ),
     "brutalista": Preset(
@@ -98,7 +133,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="lyra"),
             motion=Motion(level=4),
-            structure=Structure(header="industrial-rule"),
+            structure=Structure(header="industrial-rule", density=6),
         ),
     ),
     "institucional": Preset(
@@ -134,7 +169,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="rhea"),
             motion=Motion(level=8),
-            structure=Structure(header="custom"),
+            structure=Structure(header="custom", density=3),
         ),
     ),
     "panel-de-datos": Preset(
@@ -152,7 +187,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="mira"),
             motion=Motion(level=2),
-            structure=Structure(header="terminal-bar"),
+            structure=Structure(header="terminal-bar", density=8),
         ),
     ),
     "editorial": Preset(
@@ -170,7 +205,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="sera"),
             motion=Motion(level=3),
-            structure=Structure(header="industrial-rule"),
+            structure=Structure(header="industrial-rule", density=3),
         ),
     ),
     "organico": Preset(
@@ -188,7 +223,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="maia"),
             motion=Motion(level=5),
-            structure=Structure(header="floating-pill"),
+            structure=Structure(header="floating-pill", density=2),
         ),
     ),
     "neo-brutalista": Preset(
@@ -206,7 +241,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="lyra"),
             motion=Motion(level=5),
-            structure=Structure(header="industrial-rule"),
+            structure=Structure(header="industrial-rule", density=6),
         ),
     ),
     "retro-y2k": Preset(
@@ -225,7 +260,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="luma"),
             motion=Motion(level=6),
-            structure=Structure(header="floating-pill"),
+            structure=Structure(header="floating-pill", density=4),
         ),
     ),
     "oscuro-tecnologico": Preset(
@@ -243,7 +278,7 @@ PRESETS: dict[str, Preset] = {
             ),
             basecoat=Basecoat(theme="mira"),
             motion=Motion(level=5),
-            structure=Structure(header="terminal-bar"),
+            structure=Structure(header="terminal-bar", density=6),
         ),
     ),
 }

@@ -1,6 +1,6 @@
 # Type pairings
 
-Twenty-five pairs of families that exist on [Fontsource](https://fontsource.org),
+Twenty-six pairs of families that exist on [Fontsource](https://fontsource.org),
 so `make font` can install them as local woff2 files (the CSP is
 `font-src 'self'`; nothing loads from a CDN). Every family and weight below was
 checked against Fontsource's API and its Latin file downloaded and validated.
@@ -59,6 +59,7 @@ while the font loads. A dash means "not used".
 | 23 | retro-y2k | Space Mono 700 | Space Grotesk 400,500 | - | Retro-tech, early web, a little ironic |
 | 24 | oscuro-tecnologico | Martian Mono 400,700 | Hanken Grotesk 400,600 | - | Cold and precise; dark surfaces |
 | 25 | retro-y2k | Pixelify Sans 400,700 | Rubik 400,500 | Silkscreen 400 | Pixel-era, playful; keep body copy short |
+| 26 | ios | - | Inter 400,600 system | - | Only with the `ios` kit (San Francisco first, Inter local after) or `institucional` |
 
 ## Notes that save a redo
 

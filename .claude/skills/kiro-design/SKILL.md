@@ -37,6 +37,70 @@ different.
    V/M/D = x/y/z, signature: \<gestures>."*
 4. Only then build.
 
+## Who decides what
+
+Several things advise on design: the presets, taste-skill (this file and its
+references), the uupm advisor, a pasted brief, a reference site. **They are not
+equals.** The ten categories of the uupm guide, in its priority order, say who
+owns each decision; the full table and the conflicts already settled are in
+`references/constitution.md`. Read it before resolving a disagreement.
+
+| Floor, never relaxed | Taste, can be allowed on purpose |
+|---|---|
+| 1 accessibility, 2 touch and interaction, 3 performance, and the laws of the stack | 4 style, 5 composition, 6 type and colour choice, 7 motion level, 9 navigation shape, 10 charts |
+
+Rules have ids (`app/design_engine/rules.py`): `D*` for the contract and the build,
+`P*` for generic page patterns. A project that wants one of those patterns turns
+it off **on purpose** in `design.toml`, and the check lists it on every run:
+
+```toml
+[rules]
+allow = ["P1", "P2"]
+```
+
+`make design-set v="rules.allow=P1,P2"` writes it. The floor cannot be listed:
+`allow = ["D1"]` is an error. Whatever is decided on purpose is recorded in
+`DESIGN.md` under *Decisiones de diseño*, so it is not asked twice. The
+`estandar-shadcn` style is the Basecoat look chosen deliberately: the only way to
+get the generic look without a warning is to ask for it.
+
+## The uupm advisor
+
+[uupm](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (nextlevelbuilder's
+*ui-ux-pro-max*, MIT) knows what a product of a given kind needs: the landing
+pattern, a style, a palette, a type pairing, UX guidelines, anti-patterns. Its search
+is vendored (`uupm/`, stdlib Python and CSV, pinned by commit and hash) and
+translated to Kiro once (`uupm-kiro/`: which of its fonts exist on Fontsource, which
+palettes pass AA, which style is nearest to which preset). **You never read its CSVs
+by hand**; you ask, and it costs no context. Its own `GUIDE.md` is there to read, not
+to follow as a second skill.
+
+Its method, as it runs in a Kiro project:
+
+1. **Analyse.** The kind of product and the audience come from `PROJECT.md`. Do not
+   ask what the file already says.
+2. **A design system for the product.** `make design-advise q="landing de un spa de
+   lujo" [name=spa]` runs uupm's `--design-system` with the dials of `DESIGN.md` and
+   saves a *proposal* (`.design/proposals/spa.md`): palette, type, theme, the nearest
+   preset, the landing pattern, the anti-patterns, and every translation it had to
+   make. Review it; `make design-apply proposal=spa` applies it.
+3. **More guidance by domain.** `make design-ux q="form errors" domain=ux` (also
+   `chart`, `landing`, `style`, `color`, `typography`, `product`).
+4. **The stack.** `make design-ux q="animation" stack=1` searches uupm's
+   `html-tailwind` advice. Where it disagrees with `kiro-component` or this file, those
+   win (no CDN, no Node, Basecoat's `data-*` API).
+5. **The delivery checklist.** It is folded into "Before you say done" below, in
+   priority order: accessibility, touch, performance first.
+
+uupm is the **base** (what the product needs); a style, a pasted brief or a reference
+site is **worn on top**. `/kiro-style` takes a Refero export, a brand's `DESIGN.md`, free
+text, a website (`make design-reference url=...`) or skillui's output, and ends in a
+*proposal* to read before `make design-apply`. It takes the language (colours, family
+names, a radius, how much it moves), never logos, images, code or paid fonts, and the
+project still needs its own visual signature. The inspiration may
+replace anything that is style; it cannot replace the floor. When uupm and taste
+disagree, `references/constitution.md` already says who wins.
+
 ## How an identity is applied
 
 ```
@@ -55,6 +119,7 @@ different.
 | Re-apply everything from `design.toml` | `make design build` (idempotent; `make design watch` rebuilds on save) |
 | Look at it | `make dev`, then open `/_design` |
 | Verify the contract matches the project | `make design-check` |
+| Turn a brief (any source) into a proposal, review it, apply it | `make design-propose from=brief.json [base=advisor.json] [name=x]`, then `make design-apply proposal=x [force=1]` |
 | Set the logo | `make logo src=<path or URL>` |
 
 Every command rewrites `design.toml` and rebuilds; nothing else edits
@@ -65,8 +130,8 @@ Never edit `app/static/css/vendor/` or `app/templates/basecoat/` either.
 ## The three dials
 
 Every decision is gated by three numbers, 1-10. `DESIGN.md` records them;
-`motion.level` in `design.toml` equals `MOTION_INTENSITY`, and `make design-check`
-warns when they differ.
+`motion.level` in `design.toml` equals `MOTION_INTENSITY` and `structure.density` equals
+`VISUAL_DENSITY`; `make design-check` warns when either differs.
 
 | Dial | 1 | 10 |
 |---|---|---|
@@ -85,6 +150,8 @@ to read before building. `make design-init preset=<name>` writes it.
 | `minimalista` | 5 / 3 / 2 | Notion, Linear: monocromo cálido, tipografía editorial, bordes finos | `nova` | `sticky-blur` | 0.5rem | Newsreader + Geist | `references/minimalist.md` |
 | `suave-premium` | 7 / 6 / 3 | Calmado y caro: sombras suaves, tarjetas anidadas, mucho aire | `luma` | `floating-pill` | 1rem | Fraunces + Plus Jakarta Sans | `references/soft.md` |
 | `brutalista` | 9 / 4 / 6 | Imprenta suiza o terminal: rejilla dura, tipografía enorme, un acento de peligro | `lyra` | `industrial-rule` | 0rem | Archivo Black + Archivo + JetBrains Mono | `references/brutalist.md` |
+| `estandar-shadcn` | 2 / 3 / 5 | The Basecoat look, chosen on purpose: neutral, no signature. Allows the generic-pattern rules | `vega` | `sticky-blur` | 0.625rem | system | `references/estandar-shadcn.md` |
+| `ios` | 3 / 5 / 4 | iOS: barras translúcidas, listas agrupadas, tipografía de sistema, claro u oscuro según el dispositivo. Trae el kit `ios` | `maia` | `ios-bar` | 0.75rem | Inter (+ San Francisco en Apple) | `references/ios.md` |
 | `institucional` | 3 / 2 / 5 | Confianza primero: sector público, salud, finanzas. Llano y de alto contraste | `vega` | `sticky-blur` | 0.375rem | Source Serif 4 + Public Sans | `references/institucional.md` |
 | `expresivo` | 9 / 8 / 3 | Agencia, creativo, lanzamiento: tipografía grande, asimetría y movimiento | `rhea` | `custom` | 1.5rem | Bricolage Grotesque + Figtree | `references/expresivo.md` |
 | `panel-de-datos` | 3 / 2 / 8 | Back-office denso: conserva el tacto de Basecoat y aprieta la densidad | `mira` | `terminal-bar` | 0.375rem | IBM Plex Sans + IBM Plex Mono | `references/panel-de-datos.md` |
@@ -124,11 +191,12 @@ restyles every component.
 |---|---|
 | Primary / secondary colour | `[brand] primary`, `secondary` (`make brand-colors`) |
 | Warm, cool, pure or brand-tinted greys | `[brand] neutral = warm \| cool \| pure \| tinted`. **One temperature per project.** |
-| Light, paper-cream or dark | `[brand] surface = light \| cream \| dark`. `dark` is dark-only (no toggle to maintain) |
+| Light, paper-cream, dark, or the device's choice | `[brand] surface = light \| cream \| dark \| auto`. `dark` is dark-only; `auto` is light by default and dark when the system asks, with no toggle to maintain: tokens and `dark:` variants both follow it (no script) |
 | Corner radius | `[brand] radius`. One scale, everywhere |
 | Fonts | `[type] display \| body \| mono` (`make font`) |
 | How components feel | `[basecoat] theme` (table above) |
 | The shape of the header | `[structure] header` (see Structure) |
+| How airy or packed it is (`VISUAL_DENSITY`) | `[structure] density` 1-10. Compiled to the vertical rhythm: write `section-y` (a section's padding), `gap-rhythm` (the gap of a grid) and `min-h-row` (a row's height) instead of `py-16` and friends |
 | How much it moves | `[motion] level` (see Motion) |
 | Logo | `app/static/brand/logo.svg` or `.png`, shown by `brand_mark.html` through `brand_logo()` |
 
@@ -151,11 +219,22 @@ Pages do not extend `base.html`; they extend a layout:
 overrides `{% block scripts %}`, it must call `{{ super() }}`.
 
 The **header** is chosen with `[structure] header`: `sticky-blur` (quiet),
-`floating-pill` (soft), `industrial-rule` (printed), `terminal-bar` (technical)
+`floating-pill` (soft), `industrial-rule` (printed), `terminal-bar` (technical),
+`ios-bar` (a translucent 48 px navigation bar; belongs to the `ios` kit)
 or `custom` (`partials/headers/custom.html` is the project's own; keep its two
 includes, `brand_mark.html` and `nav_auth.html`). The session logic (user,
 logout POST with CSRF, login links) lives in `partials/nav_auth.html` and is
 shared by all of them: restyle the shape, never rewrite the logic.
+
+A **kit** is more than colours: `[structure] kit = "ios"` compiles a platform's own
+type scale, list and control shapes, materials, tab bar and sheet, and
+`components/ios.html.jinja` has the macros that use them. Read
+`references/ios.md` before building with it. Two rules of the kit worth knowing:
+a translucent material goes **only** on the navigation and controls layer (never on
+content that scrolls: rule `P6`), and its opacity is computed so text stays AA over
+any backdrop (Safari ignores `prefers-reduced-transparency`). With
+`fallback = "system"` on a font the platform's own font comes first (San Francisco on
+Apple devices, which a site may not ship) and the local one after it.
 
 A **dark band** in a light page is `<section class="dark bg-background
 text-foreground">`: the compiler re-maps every token under `.dark`. (`dark:`
@@ -195,7 +274,11 @@ font is preloaded automatically.
 ## Anti-slop rules (adapted from taste-skill)
 
 These are what make a page look generated. Break them only when `DESIGN.md`
-says so.
+says so. The mechanical ones are detected by `make design-check` (rules `P1` to
+`P10`: centred headline over three equal cards, logo wall, testimonial carousel,
+three identical pricing columns, `h-screen`, blur on scrolling content, emoji,
+the banned vocabulary, em dashes, placeholder names). They are warnings; a project
+that wants one allows it in `[rules] allow` and says why in `DESIGN.md`.
 
 **Colour**
 - One accent, saturation under 80 %. Neutral base. Lock it: the accent in the
@@ -247,7 +330,9 @@ says so.
 
 **States and a11y** (not optional)
 - Every list, form and fetch has its **loading** (a skeleton shaped like the
-  result, not a spinner), **empty** (says how to fill it) and **error** state.
+  result, not a spinner), **empty** (says how to fill it) and **error** state:
+  `components/states.html.jinja` has `loading`, `empty` and `error_state`, built on
+  Basecoat and the project's tokens.
 - Text contrast WCAG AA: 4.5:1 body, 3:1 large. The compiler guarantees it for
   the palette; check any pairing you invent (`/_design` shows the ratios).
 - Label above the input. Never placeholder-as-label.
@@ -343,6 +428,11 @@ You cannot judge a design you have not seen.
 - [ ] Motion is `data-motion` only; nothing above the project's level; nothing hidden
       without the engine's gate
 - [ ] Contrast checked; focus ring visible; reduced motion respected
-- [ ] Checked at 375 px and at 1280 px, light and dark
+- [ ] Checked at 375, 768, 1024 and 1440 px, light and dark
+- [ ] The floor holds: `make check` (it runs the UX-floor tests and the compiled
+      `kiro:a11y` block): 44 px touch targets on a phone, visible focus, a label on
+      every field, an `alt` on every image, contrast AA, reduced motion respected
+- [ ] Clickable things look clickable, hover and focus change something, transitions
+      between 150 and 300 ms, loading and error states exist (uupm's checklist)
 - [ ] No em dashes, no emoji, no placeholder names in the copy
 - [ ] Logo renders in the header and as favicon (if the project has one)

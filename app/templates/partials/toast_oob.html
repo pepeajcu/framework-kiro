@@ -1,0 +1,11 @@
+{#
+  Un toast como respuesta de HTMX. Lo devuelve app/hypermedia.py:toast_response.
+
+  hx-swap-oob="beforeend" añade el contenido a #toaster (el contenedor de
+  base.html) sin tocar nada más de la página. El texto pasa por la macro de
+  Basecoat, que lo escapa: es seguro poner datos del usuario en el título.
+#}
+{% from "basecoat/toast.html.jinja" import toast %}
+<div id="toaster" hx-swap-oob="beforeend">
+  {{ toast(category=category, title=title, description=description or "") }}
+</div>

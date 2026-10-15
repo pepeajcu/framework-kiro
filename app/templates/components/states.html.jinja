@@ -1,0 +1,59 @@
+{#
+  Los tres estados que toda lista, formulario y consulta necesita y que siempre se olvidan:
+  cargando, vacío y error (uupm y taste los exigen; la regla de la skill kiro-design).
+
+  Son estructura, no estilo: usan componentes de Basecoat (`.skeleton`, `.empty`, `.alert`)
+  y los tokens del proyecto, así que se ven como el resto de la página. Viven en components/
+  porque son TUYOS: edítalos.
+
+    {% from "components/states.html.jinja" import loading, empty, error_state %}
+
+    cargando: un esqueleto con la forma del resultado, no un spinner
+    <div id="resultados" hx-get="/buscar" hx-trigger="load">{{ loading(rows=3) }}</div>
+
+    vacío: dice qué es y cómo se llena
+    {{ empty("Aún no tienes notas", "Escribe la primera arriba.") }}
+
+    error: dice qué pasó y cómo reintentar
+    {{ error_state("No pudimos cargar", retry={"hx-get": "/buscar", "hx-target": "#resultados"}) }}
+
+  Todo lo que viene de la persona se escapa.
+#}
+
+{# Un esqueleto con la forma de una lista. `label` lo anuncia un lector de pantalla. #}
+{% macro loading(rows=3, label="Cargando") %}
+<div role="status" aria-live="polite" aria-busy="true" class="space-y-3">
+  <span class="sr-only">{{ label }}…</span>
+  {% for _ in range(rows) %}
+    <div class="skeleton bg-muted h-12 w-full rounded-md" aria-hidden="true"></div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{# Un vacío: título, una frase que dice cómo llenarlo y, si hace falta, la acción. #}
+{% macro empty(title, description=None, href=None, action=None) %}
+<div class="empty border-border rounded-lg border border-dashed p-8">
+  <header>
+    <h2 class="text-lg font-medium">{{ title }}</h2>
+    {% if description %}<p class="text-muted-foreground mt-1 text-sm">{{ description }}</p>{% endif %}
+  </header>
+  {% if href and action %}
+  <footer class="mt-4">
+    <a class="btn" data-variant="primary" data-size="sm" href="{{ href }}">{{ action }}</a>
+  </footer>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# Un error que se puede reintentar. `retry`: atributos hx-* del botón, p. ej.
+   {"hx-get": "/buscar", "hx-target": "#resultados"}. Sin `retry`, no hay botón. #}
+{% macro error_state(title, description=None, retry=None, label="Reintentar") %}
+<div role="alert" class="border-destructive/40 bg-destructive/10 rounded-lg border p-4">
+  <p class="text-destructive font-medium">{{ title }}</p>
+  {% if description %}<p class="text-muted-foreground mt-1 text-sm">{{ description }}</p>{% endif %}
+  {% if retry %}
+  <button class="btn mt-3" data-variant="outline" data-size="sm" type="button"
+          {% for key, value in retry.items() %}{{ key }}="{{ value }}" {% endfor %}>{{ label }}</button>
+  {% endif %}
+</div>
+{% endmacro %}

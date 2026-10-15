@@ -11,6 +11,253 @@ versionado según [SemVer](https://semver.org/lang/es/).
 > - `[MIGRACIÓN]` — requiere pasos manuales; los pasos están descritos en la entrada.
 > - `[RUPTURA]` — cambia contratos existentes. Leer antes de traer nada.
 
+## [Sin publicar] · Plan v2: cimientos, diseño multifuente y kit iOS
+
+Siete fases (`docs/optimizacion/plan-v2.md`, ADR-0016 a ADR-0023). Las entradas van de la más
+reciente a la más antigua. También corrige: `405` y `422` devuelven una página (o un toast)
+y no el JSON de Starlette.
+
+### Cimientos: reglas comprobadas, errores de HTMX y escapado
+
+#### Añadido (después)
+
+- `[SEGURO]` **`app/static/js/kiro-htmx.js`**: un fallo de red, un timeout o la página de error de
+  un proxy (502, 503, 504) dan un toast («Sin conexión», «El servidor no responde», «La petición
+  tardó demasiado») en lugar de un botón que no hace nada. Solo lo que el servidor no cubre; sin
+  `innerHTML` con texto variable; sin repetir el aviso. Cierra el hueco que dejó el ADR-0017.
+
+Primera fase del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0016](docs/decisions/0016-make-check-es-ci-y-reglas-comprobadas.md) y
+[ADR-0017](docs/decisions/0017-errores-y-avisos-de-htmx.md).
+
+#### Añadido
+
+- `[SEGURO]` **`make archcheck`** (`scripts/archcheck.py`, solo librería estándar):
+  trece reglas con identificador que comprueban las de AGENTS.md: SQL fuera de un
+  repositorio (K1), `commit` fuera de `app/db.py` (K2), `fastapi` en una capa
+  interna (K3), un router que escribe por un repositorio (K4), el entorno leído
+  fuera de `config.py` (K5), `async def` sin `await` (K6), un handler de página sin
+  `user` (K7), un modelo sin importar (K8) y, en plantillas, `extends` mal
+  puestos, POST sin CSRF, colores a mano, clases de Basecoat 0.x y scripts o
+  recursos externos (J1-J5). Cada violación dice archivo, línea y cómo arreglarla;
+  una excepción exige motivo (`# kiro: allow K6 — motivo`).
+- `[SEGURO]` **`app/hypermedia.py`**: una llamada HTMX que falla recibe un *toast*
+  (mismo código de estado) en lugar de una página entera; una navegación sigue
+  recibiendo la página. `toast_response(request, title=...)` para mensajes propios.
+- `[SEGURO]` `pages/400.html`: un parámetro mal formado (`DELETE /notes/abc`) ya no
+  devuelve el JSON 422 de FastAPI.
+- `[SEGURO]` `tests/test_archcheck.py`, `tests/test_hypermedia.py` y
+  `tests/test_templating.py`: 129 tests nuevos.
+
+#### Cambiado
+
+- `[MIGRACIÓN]` **`make check` es ahora lo que corre CI**: `lint types css archcheck
+  test migrations-check` más el contrato de diseño (`allow_defaults=1`). CI llama a
+  `make check` y añade `pip-audit` y Docker. Un proyecto con violaciones de
+  arquitectura verá fallos nuevos: cada uno trae su arreglo.
+- `[MIGRACIÓN]` **Jinja escapa también los archivos `.jinja`** (macros de Basecoat y
+  `components/form.html.jinja`). Un argumento que contenga HTML a propósito debe
+  pasar por `| safe` dentro de la macro, como ya hacen las de Basecoat.
+- `[MIGRACIÓN]` Las respuestas 400, 403, 404, 409, 422, 429 y 500 se intercambian en
+  HTMX (`<meta name="htmx-config">` en `base.html`). Si tu proyecto emite otro
+  código para HTMX, añádelo ahí.
+- `[RUPTURA]` `has_marketing_consent(cookie_value)` recibe el valor de la cookie, no
+  el `Request`: un servicio no ve objetos HTTP. Quien lo llame pasa
+  `request.cookies.get(CONSENT_COOKIE)`.
+- `[MIGRACIÓN]` Los handlers `POST /login`, `/register`, `/forgot-password` y
+  `/reset-password/{token}`, y el GET del formulario de restablecimiento, declaran
+  `user: OptionalUser` (regla 10). Los que tengan una variable local `user` en tus
+  propios handlers deben renombrarla.
+- `[SEGURO]` El hook de mypy de `pre-commit` es local (`uv run mypy`), sin la lista de
+  dependencias desfasada que lo hacía fallar; se añade el hook de archcheck.
+- `[SEGURO]` La skill `kiro-feature` corrige un ejemplo al que le faltaba el import
+  de `NotFoundError`, aclara que las lecturas pueden saltarse el servicio y las
+  escrituras no, y señala `app/routers/notes.py` como el recorrido completo.
+- `[SEGURO]` Las referencias vendorizadas de taste-skill quedan fijadas a un commit
+  (`9da1763`): `main` pasó a ser una v2 sin diales, incompatible con varios estilos.
+
+#### Corregido
+
+- `[SEGURO]` **Seguridad: una respuesta 500 salía sin `Content-Security-Policy`, sin
+  `X-Frame-Options` y sin `X-Request-ID`.** Starlette contesta una excepción no
+  capturada fuera de la pila de middleware; el manejador del 500 pone ahora esas
+  cabeceras a mano.
+- `[SEGURO]` **Seguridad: el texto de un campo de formulario y el de un toast salían
+  sin escapar** (`autoescape` no cubría `.jinja`). Ahora sí.
+- `[SEGURO]` Un 403 o un 404 contestados a `hx-delete` y similares no se veían: htmx
+  no intercambia 4xx/5xx por defecto. Un formulario `hx-post` rechazado con 400 tampoco.
+- `[SEGURO]` Los POST de autenticación que vuelven a pintar el formulario con un 400
+  mostraban la cabecera como si nadie hubiera entrado.
+
+### Constitución de diseño y tubería única
+
+Fase 2 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0018](docs/decisions/0018-constitucion-de-diseno-y-tuberia-unica.md).
+
+#### Añadido
+
+- `[SEGURO]` **`references/constitution.md`** y **`app/design_engine/rules.py`**: quién
+  decide qué entre taste-skill, uupm, los presets, un brief y una web de
+  referencia, con las diez categorías de la guía de uupm en su orden. Accesibilidad,
+  uso táctil y rendimiento (el suelo) no se relajan; el resto se puede permitir.
+  Los choques conocidos vienen resueltos.
+- `[SEGURO]` **`[rules] allow = [...]`** en `design.toml` (opcional; no aparece hasta
+  que se usa). `make design-set v="rules.allow=P1,P2"`. `design-check` lo recuerda
+  en cada ejecución.
+- `[SEGURO]` **Avisos `P1`-`P10` en `make design-check`** para los patrones que hacen
+  que una página parezca generada: titular centrado con tres tarjetas, muro de
+  logos, carrusel de testimonios, precios en tres columnas iguales, `h-screen`,
+  desenfoque fuera de una barra, emoji, vocabulario de plantilla, raya larga y
+  nombres de relleno.
+- `[SEGURO]` **Preset `estandar-shadcn`**: el aspecto Basecoat elegido a propósito
+  (permite los patrones genéricos). Doce estilos en total.
+- `[SEGURO]` **`DesignBrief`, `propose()` y los comandos `make design-propose` /
+  `make design-apply`**: toda fuente de dirección visual pasa por la misma
+  tubería pura hacia el contrato, con un solo acento que pasa AA, fuentes de
+  Fontsource, tema derivado del radio, y cada decisión anotada. `apply` guarda una
+  copia, no pisa una identidad propia sin `force=1` y escribe lo decidido en
+  `DESIGN.md`.
+- `[SEGURO]` `DESIGN.md` gana las secciones **Decisiones de diseño** y **Procedencia**.
+- `[SEGURO]` `.design/` (propuestas y copias) está en `.gitignore`.
+
+#### Cambiado
+
+- `[SEGURO]` La fixture `project` de los tests de diseño pasa a `tests/conftest.py`.
+
+### uupm integrado y suelo de UX comprobado
+
+Fase 3 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0019](docs/decisions/0019-uupm-vendorizado-con-solapamiento.md).
+
+#### Añadido
+
+- `[SEGURO]` **El asesor uupm** (nextlevelbuilder, MIT, v2.15.0) vendorizado en
+  `.claude/skills/kiro-design/uupm/`: una lista cerrada de archivos pinada por commit y por
+  SHA-256, Python estándar y CSV, sin red ni Node. **`make design-advise q="..."`** pide un
+  sistema de diseño para el producto y lo guarda como propuesta; **`make design-ux q="..."
+  domain=ux`** consulta sus guías. Su `SKILL.md` es `GUIDE.md`: `kiro-design` sigue siendo la
+  única skill de diseño.
+- `[SEGURO]` **`uupm-kiro/`**, uupm traducido una vez a lo que Kiro puede hacer: 91 fuentes
+  suyas frente a Fontsource (con pesos), 192 paletas frente al compilador (AA, tono morado,
+  saturación), 88 estilos frente a los presets. `make vendor-uupm` lo reconstruye.
+- `[SEGURO]` **Suelo de accesibilidad compilado** (`kiro:a11y`, siempre emitido): zona de
+  pulsación de 44 px con puntero grueso sin cambiar el tamaño visual del botón, foco visible
+  de respaldo, `prefers-contrast: more` y `prefers-reduced-motion`. Enlace «Saltar al
+  contenido» en `base.html`.
+- `[MIGRACIÓN]` **`tests/test_ux_floor.py`**: renderiza cada ruta GET (anónimo y con sesión) y
+  exige `lang`, `title`, un `h1`, un `main`, un nombre accesible para todo lo que se pulsa o
+  se escribe, `alt`, `width` y `height` en las imágenes, zoom permitido y sin `tabindex`
+  positivo. Una página que no los cumpla romperá `make check`. Las rutas con parámetro y los
+  fragmentos HTMX se declaran al principio del archivo.
+- `[SEGURO]` Regla `D6`: `design-check` avisa si hay otra skill de diseño que compite.
+- `[SEGURO]` `/kiro-design-review` rehecho: tres pasadas (uupm, taste, kit) en un solo informe
+  ordenado por la prioridad de uupm, a cuatro anchos (375, 768, 1024 y 1440 px). Un fallo del
+  suelo bloquea sin límite de pasadas; el gusto tiene dos y se escala al usuario.
+  `/kiro-redesign auditoría` solo informa. `/kiro-init` saca sus tres direcciones de la misma
+  tubería.
+
+#### Corregido
+
+- `[SEGURO]` `propose` comprobaba el contraste del color secundario contra el primario *antes*
+  de corregirlo, y por eso daba por irresolubles paletas válidas. Lo destapó el barrido de los
+  192 tipos de producto.
+
+### Kit iOS, `surface = "auto"` y fuente del sistema
+
+Fase 4 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0020](docs/decisions/0020-kit-ios-superficie-auto-y-fuente-del-sistema.md).
+
+#### Añadido
+
+- `[SEGURO]` **Preset `ios`** y **kit iOS** (`[structure] kit = "ios"`): la escala de Dynamic
+  Type de Apple HIG (17 px de cuerpo, 34 px de título grande), listas agrupadas, control
+  segmentado, barra de pestañas, hoja modal y materiales translúcidos, más la cabecera
+  `ios-bar`. Los componentes están en `components/ios.html.jinja` (HTML que funciona sin
+  JavaScript, todo escapado). Referencia en `references/ios.md`; `/_design` enseña el kit.
+- `[SEGURO]` **`surface = "auto"`**: claro por defecto y oscuro cuando el sistema lo pide, sin
+  selector que mantener. Los tokens y los `dark:` de Basecoat siguen al sistema sin
+  JavaScript (se redefine la variante `dark`).
+- `[SEGURO]` **`fallback = "system"`** en una fuente: la del sistema primero (San Francisco en
+  Apple, que una web no puede incluir) y la local después. No se precarga.
+- `[SEGURO]` **Materiales con opacidad calculada**: la mínima que mantiene el texto en AA sobre
+  un fondo blanco y sobre uno negro, porque Safari ignora `prefers-reduced-transparency`.
+- `[SEGURO]` Los estilos de uupm «Liquid Glass» y afines se asignan al preset `ios`.
+
+#### Corregido
+
+- `[SEGURO]` La sección de tipografía de `/_design` desbordaba en horizontal en móvil
+  (hijos de una rejilla sin `min-w-0`).
+
+### Referencias externas
+
+Fase 5 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0021](docs/decisions/0021-referencias-externas-un-lector-y-candados.md).
+
+#### Añadido
+
+- `[SEGURO]` **`/kiro-style`** y **`make design-reference`**: una dirección visual de fuera
+  (el «Copy .md» de Refero Styles, el `DESIGN.md` de una marca, una web, la salida de skillui)
+  se reduce a un brief y termina en una **propuesta** que se lee antes de aplicar. Un solo
+  lector tolerante (`app/design_engine/external_md.py`) cubre Refero, skillui y el formato
+  Stitch; `skillui.py` lee sus `tokens/*.json`; `scripts/reference.py` lee el CSS de una web
+  (solo texto: ni imágenes ni fuentes) o envuelve skillui.
+- `[SEGURO]` skillui es **opcional y externo** (Node queda fuera, ADR-0005): se ejecuta siempre
+  con `--out .design/reference/<nombre> --no-skill --format design-md`, porque sin `--out`
+  escribiría `DESIGN.md` y `CLAUDE.md` en la raíz del proyecto.
+- `[SEGURO]` `make design-brief-schema`: el esquema JSON de un brief, para que la IA convierta
+  un texto libre en uno validado.
+- `[SEGURO]` Solo se acepta `http(s)` como URL de referencia; la procedencia (URL y fecha) se
+  anota en `DESIGN.md`.
+
+### Formularios con memoria y avisos tras una redirección
+
+Fase 6 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0022](docs/decisions/0022-formularios-con-memoria-y-avisos-tras-redireccion.md).
+
+#### Añadido
+
+- `[SEGURO]` **`validate_form(Modelo, campo=valor, ...)`** y **`FormResult`**
+  (`app/schemas`): nunca lanza; devuelve el modelo o lo escrito (sin contraseñas, secretos ni
+  tokens) y el primer error de cada campo. `form.with_errors({...})` añade un error que no es de
+  un campo (credenciales, un email ya usado).
+- `[SEGURO]` **Macros de formulario con memoria**: `field(..., form=form)` y las nuevas
+  `textarea`, `select` y `checkbox` leen valor y error del `FormResult`, enlazan el error y la
+  ayuda con `aria-describedby` y escapan todo. Los argumentos `value=` y `errors=` siguen
+  funcionando. Una contraseña no se rellena nunca.
+- `[SEGURO]` **`flash(response, settings, "Mensaje")`** (`app/hypermedia.py`): el toast de un
+  POST/redirect/GET. Cookie firmada (sal propia, 2 minutos) que `render()` muestra una sola vez
+  en el siguiente página completa y borra; un fragmento HTMX no la consume.
+- `[SEGURO]` `toast_response(..., replace_target=True)`: el elemento desaparece (un botón de
+  borrar) y el toast aparece.
+
+#### Cambiado
+
+- `[MIGRACIÓN]` Los formularios de autenticación y el de notas usan `validate_form`: las
+  plantillas reciben `form` en lugar de `errors` y los valores sueltos (`email`, `title`...). El
+  cuerpo de una nota es ahora un `textarea`. Crear una nota dice «Nota guardada» y borrarla,
+  «Nota eliminada». Un proyecto que copió esos patrones sigue funcionando con `value=`/`errors=`.
+
+### Densidad compilada y estados
+
+Fase 7 del plan de `docs/optimizacion/plan-v2.md`. Ver
+[ADR-0023](docs/decisions/0023-densidad-compilada-y-estados.md).
+
+#### Añadido
+
+- `[SEGURO]` **`[structure] density`** (1 a 10, por defecto 5): `VISUAL_DENSITY` deja de ser
+  un número que nada lee. El compilador emite un bloque `kiro:rhythm` con `--kiro-section-y`,
+  `--kiro-gap` y `--kiro-row-h` y las utilidades de Tailwind **`section-y`**, **`gap-rhythm`**
+  y **`min-h-row`**; en móvil la sección se estrecha y una fila no baja de 44 px con puntero
+  táctil. Los arquetipos de `archetypes.md` usan `section-y`. Cada preset lleva su densidad.
+  `make design-check` avisa si `DESIGN.md` y el contrato difieren; `make design-set
+  v="structure.density=8"`.
+- `[SEGURO]` **`components/states.html.jinja`**: `loading` (esqueleto, `role="status"`), `empty`
+  (dice cómo llenarlo) y `error_state` (con reintento HTMX opcional). El ejemplo de notas los usa.
+
+#### Cambiado
+
+- `[SEGURO]` El preset `estandar-shadcn` pasa a densidad 5 (el ritmo de serie de Basecoat).
+
 ## [1.2.0] — 2026-10-13 · Motor de diseño
 
 Cierra el problema que dejó la 1.1: la identidad solo cambiaba tres de unos treinta

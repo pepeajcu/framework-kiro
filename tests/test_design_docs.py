@@ -47,12 +47,15 @@ def test_a_style_reference_embeds_exactly_its_presets_contract(name: str) -> Non
     assert f"make design-init preset={name}" in read(REFERENCES / preset.reference)
 
 
-def test_there_are_eleven_styles_and_the_five_new_ones_have_references() -> None:
-    assert len(PRESETS) == 11
+def test_there_are_thirteen_styles_and_the_new_ones_have_references() -> None:
+    assert len(PRESETS) == 13
+    assert {"estandar-shadcn", "ios"} <= set(PRESETS)
     assert {"editorial", "organico", "neo-brutalista", "retro-y2k", "oscuro-tecnologico"} <= set(
         PRESETS
     )
     assert set(KIRO_STYLES) == {
+        "estandar-shadcn",
+        "ios",
         "institucional",
         "expresivo",
         "panel-de-datos",
@@ -79,6 +82,17 @@ def test_every_reference_file_is_known_to_the_skill_and_the_notice() -> None:
     assert "MIT" in read(REFERENCES / "LICENSE-taste-skill")
 
 
+def test_the_taste_skill_refresh_recipe_is_pinned_to_a_commit() -> None:
+    """`main` of taste-skill became an incompatible v2: refreshing must name a commit."""
+    notice = read(REFERENCES / "NOTICE.md")
+
+    assert re.search(r"taste-skill@[0-9a-f]{40}\b", notice)
+    assert notice.count("?ref=$REF") >= 2
+    assert "REF=" in notice
+    # The unpinned form of the recipe must be gone.
+    assert "/SKILL.md --jq" not in notice
+
+
 def test_the_redesign_reference_is_the_upstream_audit() -> None:
     assert "Redesign Skill" in read(REFERENCES / "redesign.md")
     assert "redesign.md" in read(COMMANDS / "kiro-redesign.md")
@@ -87,7 +101,7 @@ def test_the_redesign_reference_is_the_upstream_audit() -> None:
 # --- Type pairings ----------------------------------------------------------
 
 _ENTRY = re.compile(
-    r"^(?P<name>[A-Za-z][A-Za-z0-9 ]*?) (?P<weights>\d{3}(?:,\d{3})*)(?: (?P<kind>serif))?$"
+    r"^(?P<name>[A-Za-z][A-Za-z0-9 ]*?) (?P<weights>\d{3}(?:,\d{3})*)(?: (?P<kind>serif|system))?$"
 )
 
 
@@ -111,10 +125,10 @@ def parse_entry(cell: str) -> tuple[str, list[int], str | None] | None:
     return match["name"], [int(w) for w in match["weights"].split(",")], match["kind"]
 
 
-def test_there_are_twenty_five_pairings() -> None:
+def test_there_are_twenty_six_pairings() -> None:
     rows = pairing_rows()
 
-    assert [int(r["n"]) for r in rows] == list(range(1, 26))
+    assert [int(r["n"]) for r in rows] == list(range(1, 27))
 
 
 @pytest.mark.parametrize("row", pairing_rows(), ids=lambda r: f"{r['n']}-{r['display'].split()[0]}")
@@ -363,3 +377,44 @@ def test_every_motion_value_in_the_catalogue_exists_in_the_vocabulary() -> None:
     used = set(re.findall(r'data-motion="([a-z-]+)"', read(REFERENCES / "archetypes.md")))
 
     assert used <= set(VOCABULARY), sorted(used - set(VOCABULARY))
+
+
+# --- The constitution ---------------------------------------------------------
+
+
+def test_the_constitution_only_names_rules_that_exist() -> None:
+    from app.design_engine.rules import RULES
+
+    text = read(REFERENCES / "constitution.md")
+    named = set(re.findall(r"`([DP]\d+)`", text))
+
+    assert named, "la constitución no cita ninguna regla"
+    assert named <= set(RULES), sorted(named - set(RULES))
+
+
+def test_the_constitution_lists_the_ten_categories_in_priority_order() -> None:
+    from app.design_engine.rules import CATEGORIES, FLOOR
+
+    text = read(REFERENCES / "constitution.md")
+    rows = re.findall(r"^\| (\d+) \| [^|]+ \| (critical|high|medium|low) \|", text, re.M)
+
+    assert [int(n) for n, _ in rows] == list(CATEGORIES)
+    # The floor is exactly the categories that are critical or about performance.
+    assert {int(n) for n, _ in rows[:3]} == FLOOR
+    assert [priority for _, priority in rows][:3] == ["critical", "critical", "high"]
+
+
+def test_the_skill_points_at_the_constitution_and_the_rules_section() -> None:
+    skill = read(SKILL_DIR / "SKILL.md")
+
+    assert "references/constitution.md" in skill
+    assert "[rules]" in skill and "estandar-shadcn" in skill
+    assert (REFERENCES / "constitution.md").is_file()
+
+
+def test_the_design_template_has_room_for_decisions_and_provenance() -> None:
+    from app.design_engine.design_md import DECISIONS_HEADING, PROVENANCE_HEADING
+
+    text = read(REPO / "DESIGN.md")
+
+    assert DECISIONS_HEADING in text and PROVENANCE_HEADING in text

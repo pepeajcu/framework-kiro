@@ -11,15 +11,20 @@ looking like every other one.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
+from app.design_engine import patterns
 from app.design_engine.blocks import find_block
 from app.design_engine.compiler import compile_contract
 from app.design_engine.contract import DesignContract, DesignError, load_contract
+from app.design_engine.design_md import read_dials
 from app.design_engine.fonts import required_files, validate_woff2
 from app.design_engine.motion import VOCABULARY, missing_files
 from app.design_engine.paths import Paths
+from app.design_engine.rules import RULES
 
 Level = Literal["ok", "warn", "error"]
 
@@ -70,7 +75,9 @@ def run_checks(paths: Paths, *, allow_defaults: bool = False) -> list[Finding]:
     findings += _check_motion(contract, paths)
     findings += _check_header(contract, paths)
     findings += _check_templates(contract, paths)
+    findings += _check_patterns(contract, paths)
     findings += _check_design_md(contract, paths)
+    findings += _check_competing_skills(paths)
     return findings
 
 
@@ -171,19 +178,90 @@ def _check_header(contract: DesignContract, paths: Paths) -> list[Finding]:
     return [_ok(f"cabecera: {name}")]
 
 
-def _check_templates(contract: DesignContract, paths: Paths) -> list[Finding]:
-    """`data-motion` values the project's level does not provide."""
+def _project_templates(paths: Paths) -> Iterator[tuple[Path, str]]:
+    """`(relative path, text without comments)` for each template of the project.
+
+    Skips what is not the project's own markup: the vendored Basecoat macros, the
+    emails, and `/_design`, which shows every value on purpose. A comment that
+    documents `data-motion="pin"` or a "badge + title + cards" is not a use of it.
+    """
     if not paths.templates.is_dir():
-        return []
-    level = contract.motion.level
-    findings: list[Finding] = []
-    seen: set[tuple[str, str]] = set()
+        return
     for path in sorted(paths.templates.rglob("*.html")):
         relative = path.relative_to(paths.templates)
         if relative.parts[0] in {"basecoat", "emails"} or relative.as_posix() == SHOWCASE_TEMPLATE:
             continue
-        # A comment that documents `data-motion="pin"` is not a use of it.
-        text = _JINJA_COMMENT.sub("", path.read_text(encoding="utf-8"))
+        yield relative, patterns.strip_comments(path.read_text(encoding="utf-8"))
+
+
+#: Skills that give design direction of their own. Installed next to `kiro-design` they
+#: would answer the same question differently (see `references/constitution.md`).
+COMPETING_SKILLS = frozenset(
+    {
+        "ui-ux-pro-max",
+        "design-taste-frontend",
+        "design-taste-frontend-v1",
+        "design-taste-frontend-v2-experimental",
+        "high-end-visual-design",
+        "minimalist-ui",
+        "industrial-brutalist-ui",
+        "redesign-existing-projects",
+        "stitch-design-taste",
+        "frontend-design",
+        "impeccable",
+    }
+)
+
+
+def _check_competing_skills(paths: Paths) -> list[Finding]:
+    """One door in: `kiro-design` is the only design skill of the project."""
+    if not paths.skills.is_dir():
+        return []
+    found = sorted(
+        folder.name
+        for folder in paths.skills.iterdir()
+        if (folder / "SKILL.md").is_file() and folder.name in COMPETING_SKILLS
+    )
+    return [
+        _warn(
+            f"D6 .claude/skills/{name} compite con kiro-design",
+            RULES["D6"].fix + "; quítala (ya está vendorizada como referencia)",
+        )
+        for name in found
+    ]
+
+
+def _check_patterns(contract: DesignContract, paths: Paths) -> list[Finding]:
+    """Generic page patterns (rules P1-P10), except those the project allows."""
+    allowed = set(contract.rules.allow)
+    findings: list[Finding] = []
+    if allowed:
+        findings.append(
+            _warn(
+                f"design.toml permite patrones genéricos a propósito: {', '.join(sorted(allowed))}",
+                "se anotan en DESIGN.md, en «Decisiones de diseño»",
+            )
+        )
+    for relative, code in _project_templates(paths):
+        for hit in patterns.scan(code):
+            if hit.rule in allowed:
+                continue
+            rule = RULES[hit.rule]
+            findings.append(
+                _warn(
+                    f"{hit.rule} {relative}: {rule.title} ({hit.detail})",
+                    f'{rule.fix}; o permítelo con [rules] allow = ["{hit.rule}"] en design.toml',
+                )
+            )
+    return findings
+
+
+def _check_templates(contract: DesignContract, paths: Paths) -> list[Finding]:
+    """`data-motion` values the project's level does not provide."""
+    level = contract.motion.level
+    findings: list[Finding] = []
+    seen: set[tuple[str, str]] = set()
+    for relative, text in _project_templates(paths):
         if _EASE_SPRING.search(text) and level < SPRING_MIN_LEVEL:
             findings.append(
                 _warn(
@@ -231,6 +309,15 @@ def _check_design_md(contract: DesignContract, paths: Paths) -> list[Finding]:
                 f"DESIGN.md dice MOTION_INTENSITY = {dial.group(1)} pero design.toml tiene "
                 f"motion.level = {contract.motion.level}",
                 "deben coincidir: uno de los dos está desactualizado",
+            )
+        )
+    density = read_dials(text).get("density")
+    if density is not None and density != contract.structure.density:
+        findings.append(
+            _warn(
+                f"DESIGN.md dice VISUAL_DENSITY = {density} pero design.toml tiene "
+                f"structure.density = {contract.structure.density}",
+                'deben coincidir: `make design-set v="structure.density=N"` o corrige DESIGN.md',
             )
         )
     for line in text.splitlines():

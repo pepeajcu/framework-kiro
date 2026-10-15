@@ -84,13 +84,29 @@ def build_csp(directives: dict[str, str]) -> str:
     return "; ".join(f"{name} {value}" for name, value in directives.items())
 
 
+def apply_security_headers(response: Response, settings: Settings) -> None:
+    """Put the headers on a response that has not got them yet.
+
+    `setdefault`, so a route that sets one on purpose keeps its value. Called by
+    the middleware for every response the application produces, and by the 500
+    handler: Starlette answers an unhandled exception from *outside* the
+    middleware stack, so without that second call a server error would be the
+    one response with no CSP.
+    """
+    for header, value in STATIC_HEADERS.items():
+        response.headers.setdefault(header, value)
+    response.headers.setdefault("Content-Security-Policy", build_csp(CONTENT_SECURITY_POLICY))
+
+    if settings.is_production:
+        response.headers.setdefault("Strict-Transport-Security", HSTS)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add the headers to every response the application produces."""
 
     def __init__(self, app: Callable[..., object], *, settings: Settings) -> None:
         super().__init__(app)  # type: ignore[arg-type]
         self.settings = settings
-        self.csp = build_csp(CONTENT_SECURITY_POLICY)
 
     async def dispatch(
         self,
@@ -99,12 +115,5 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         """Attach the headers on the way out."""
         response = await call_next(request)
-
-        for header, value in STATIC_HEADERS.items():
-            response.headers.setdefault(header, value)
-        response.headers.setdefault("Content-Security-Policy", self.csp)
-
-        if self.settings.is_production:
-            response.headers.setdefault("Strict-Transport-Security", HSTS)
-
+        apply_security_headers(response, self.settings)
         return response

@@ -41,7 +41,8 @@ rejected for a specific reason.
 
 ```bash
 make dev        # run the app with hot reload
-make check      # lint + types + tests + migration drift — run before finishing
+make check      # lint + types + css + design contract + archcheck + tests + migration drift
+make archcheck  # the hard rules below, checked by machine (K1-K8, J1-J5)
 make test       # tests only
 make revision m="add providers table"   # generate a migration from the models
 make migrate    # apply migrations
@@ -52,12 +53,18 @@ make font name="Fraunces" weights="400,600" role=display   # a local font from F
 make design-init preset=brutalista        # start the whole identity from a style
 make design build                         # compile design.toml: CSS, fonts, motion (idempotent)
 make design-check                         # does design.toml match what the project ships?
+make design-advise q="landing de un spa"   # ask the uupm advisor for a design system and propose it
+make design-ux q="form errors" domain=ux   # a uupm guideline, as text (domains: ux chart landing style color typography product)
+make design-reference url=https://...      # take a reference's visual language (also md=, skillui=, skillui_dir=)
+make design-propose from=brief.json       # turn a design brief into a proposal (.design/proposals/)
+make design-apply proposal=<name>         # apply it: design.toml + DESIGN.md + build + check
 ```
 
 The identity commands all rewrite `design.toml` and rebuild; `/_design` (dev
 only) shows the result. See `.claude/skills/kiro-design/SKILL.md`.
 
-Always run `make check` before reporting work as done. It is what CI runs.
+Always run `make check` before reporting work as done. It is what CI runs
+(CI adds `pip-audit` and the Docker build).
 
 ## Architecture
 
@@ -79,6 +86,12 @@ router → service → repository → model → Jinja template → HTML
 | `app/emails/` | Transactional email: one adapter per provider, plus rendering |
 | `app/security.py` | argon2 hashing, opaque tokens, session cookie flags |
 | `app/middleware/` | request id, security headers, CSRF cookie |
+| `app/hypermedia.py` | What an HTMX call gets back: error toasts, `toast_response`, `error_response` |
+
+**Reads may skip the service; writes may not.** A page that only lists or shows
+rows can call a repository from its router. Anything that creates, changes or
+deletes goes through a service, even a one-line one: that is where the next rule
+will land (K4).
 
 ## Hard rules
 
@@ -102,7 +115,41 @@ router → service → repository → model → Jinja template → HTML
 9. Type everything. `mypy --strict` runs over `app/` and must pass.
 10. **Every page handler declares `user`** — `OptionalUser` on public pages,
     `CurrentUser` on private ones. That dependency is what resolves the session
-    cookie; without it the header renders as if nobody were logged in.
+    cookie; without it the header renders as if nobody were logged in. A POST
+    that re-renders its form with a 400 is a page handler too.
+
+### Checked by machine
+
+`make archcheck` (part of `make check`) fails with the file, the line, what to do
+instead and the rule it breaks. It is stdlib only (`scripts/archcheck.py`).
+
+| ID | Fails when | Rule |
+|---|---|---|
+| K1 | a router or service imports a query builder or calls `db.execute/scalars/query` | 1 |
+| K2 | `.commit()` / `.rollback()` anywhere but `app/db.py` | 2 |
+| K3 | services, repositories, models, schemas, design_engine, emails or analytics import `fastapi`/`starlette` | architecture |
+| K4 | a router writes (`create/update/delete`) through a repository | architecture |
+| K5 | `os.getenv` / `os.environ` outside `app/config.py` | 6 |
+| K6 | an `async def` handler has no `await` | 7 |
+| K7 | a handler that renders `pages/...` does not declare `OptionalUser`/`CurrentUser`/a role | 10 |
+| K8 | a module in `app/models/` is not imported in `app/models/__init__.py` | 5 |
+| J1 | a `partials/` template extends, or a `pages/` one extends `base.html` | frontend |
+| J2 | a `<form method="post">` without `components/csrf_field.html` | forms |
+| J3 | a hex, `rgb()` or `oklch()` colour written in a template | frontend |
+| J4 | a Basecoat 0.x class (`btn-primary`, `btn-sm`, `badge-secondary`...) | frontend |
+| J5 | an inline `<script>` or a resource from another domain (ADR-0005, ADR-0010) | frontend |
+
+A genuine exception is allowed, with a reason, and it is listed in every run.
+Without the reason after the dash it does not count:
+
+```python
+# kiro: allow K6 — awaits the payment provider (next commit)
+@router.post("/webhook")
+```
+
+```jinja
+{# kiro: allow J5 — the widget has no self-hosted build #}
+```
 
 ## Golden path: adding a feature
 
@@ -158,7 +205,10 @@ Rules that are not obvious from the code:
   `/forgot-password` renders the same page either way. This is a requirement,
   not a nicety: the alternative is a form that enumerates your users.
 - **A form POST answers 303 on success** (post/redirect/get) and re-renders the
-  form with a 400 on failure. Never 200 on a rejected form.
+  form with a 400 on failure. Never 200 on a rejected form. `validate_form(Model, ...)`
+  (`app/schemas`) returns the model or a `FormResult` with what was typed and the
+  errors (never passwords); the form macros read it (`form=form`). `flash(response,
+  settings, "...")` (`app/hypermedia.py`) makes the next page show a one-time toast.
 - **Changing a password revokes every session and every pending reset link.**
   `AuthService.set_password` already does it; do not bypass it.
 
@@ -188,7 +238,8 @@ middleware — that consumes the request body and the handler receives nothing.
 
 Set up once in `create_app`; you do not call any of it, but know it is there:
 
-- **Security headers** on every response (`app/middleware/security_headers.py`).
+- **Security headers** on every response, the 500 page included
+  (`app/middleware/security_headers.py`).
   The CSP lives in a dict you can edit. It carries `'unsafe-inline'` in
   `script-src` because Basecoat's dialog, command and toast macros ship inline
   `onclick` handlers — see ADR-0010 before "fixing" that.
@@ -264,6 +315,28 @@ Most components are CSS classes only. Nine complex ones ship Jinja macros in
 The handler returns a `partials/` template — a fragment, not a document that
 extends a layout. See `app/routers/pages.py:demo_ping` for a working example.
 
+**Errors answer an HTMX call with a toast, not a page.** A network failure, a timeout or a
+proxy's 502 never reach the app, so `app/static/js/kiro-htmx.js` (loaded by `base.html`) shows
+the same kind of toast for those. Raise the domain
+exceptions as usual; `app/main.py` answers a navigation with the error page and an
+HTMX call with a toast (`HX-Reswap: none` plus an out-of-band swap into
+`#toaster`), same status code. For your own message:
+
+```python
+from app.hypermedia import toast_response
+
+return toast_response(request, title="Nota archivada", category="success")
+```
+
+The toast is rendered by Jinja, which escapes the text. **Never** call
+`toaster.toast({...})` from JavaScript with text a visitor can influence:
+Basecoat's JS builds it as raw HTML. `base.html` tells HTMX which 4xx/5xx codes
+to swap (400, 403, 404, 405, 409, 422, 429, 500); if you start emitting another, add it
+to the `htmx-config` tag there, or the response is silently dropped.
+
+Jinja escapes `.html`, `.htm`, `.xml` **and `.jinja`** files (`app/templating.py`);
+a new template extension is a decision, not a default.
+
 **Pages extend a layout, not `base.html`.** `layouts/app.html` (centred
 container: private screens, lists, forms) or `layouts/landing.html` (full-bleed
 sections, loads motion). The header is an archetype chosen in `design.toml`
@@ -278,12 +351,20 @@ Templates use `bg-primary`, `text-muted-foreground`… and `brand_logo()`; never
 hard-coded hex or a logo file name. Never edit inside the `kiro:*` blocks of
 `input.css`: they are regenerated on every build.
 
+**Rhythm is a utility, not a number you pick per page:** `section-y`, `gap-rhythm` and
+`min-h-row` follow `[structure] density` in `design.toml`. The three states every list and
+form needs (loading, empty, error) are `components/states.html.jinja`.
+
 **Motion is attributes, never page JavaScript:** `data-motion="reveal"`,
 `"stagger"`, `"split-reveal"`, `"count"`… The level in `design.toml` decides what
 runs; content is always visible without JS and under reduced motion.
 
 Design rules (anti-slop, dials, signature, archetypes, fonts without CDN) are in
-`.claude/skills/kiro-design/SKILL.md`. `home.html` is scaffolding, not a model
+`.claude/skills/kiro-design/SKILL.md`. When two design sources disagree (taste,
+uupm, a preset, a reference) the table in
+`.claude/skills/kiro-design/references/constitution.md` says who wins: accessibility,
+touch and performance never give way; the generic-pattern rules (`P1`-`P10`) can be
+allowed on purpose in `[rules] allow`. `home.html` is scaffolding, not a model
 to imitate: build real pages from `DESIGN.md`.
 
 After editing any template, run `make css`: Tailwind scans templates for class

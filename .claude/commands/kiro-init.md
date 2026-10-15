@@ -59,7 +59,9 @@ antes de pedir cualquier feature.
    - **Nombre y estilo base**, de la tabla de la skill (`minimalista`,
      `suave-premium`, `brutalista`, `institucional`, `expresivo`,
      `panel-de-datos`, `editorial`, `organico`, `neo-brutalista`, `retro-y2k`,
-     `oscuro-tecnologico`).
+     `oscuro-tecnologico`, `ios`; y `estandar-shadcn`, que no es una dirección sino el
+     aspecto Basecoat elegido a propósito: ofrécelo solo si el usuario pide
+     explícitamente "el shadcn estándar", nunca como la opción cómoda).
    - **Paleta:** primario (hex), neutros (`warm`/`cool`/`pure`/`tinted`),
      superficie (`light`/`cream`/`dark`), secundario si lo pide.
    - **Tipografía:** una pareja de `references/type-pairings.md` (las únicas
@@ -70,6 +72,19 @@ antes de pedir cualquier feature.
      repetibles ("titulares serif a 12vw que se salen del borde"). No salen de
      ningún catálogo.
    - **Nivel de movimiento** (1-10) y por qué.
+
+   **De dónde sale cada una** (todas pasan por la misma tubería, ver
+   `references/constitution.md`):
+
+   | Dirección | Origen |
+   |---|---|
+   | Segura | La base de uupm para el producto: `make design-advise q="<producto de PROJECT.md>" name=segura`. Lo que propone es lo que necesita ese tipo de producto |
+   | Atrevida | Un estilo que contraste con la segura, filtrado por taste (dials, firma, anti-slop) |
+   | Experimental | La referencia que traiga el usuario (un brief de Refero, una web, el DESIGN.md de una marca): `/kiro-style`, con `base=.design/briefs/segura.json` para vestirla sobre la base de uupm. Si no trae ninguna, el estilo que el sector no esperaría |
+
+   Cada propuesta se revisa (`.design/proposals/<nombre>.md`) antes de aplicarse con
+   `make design-apply proposal=<nombre>`. Si lo que el usuario pide es el aspecto Basecoat de
+   serie a propósito, ofrece `estandar-shadcn`.
 
    Reglas para que de verdad contrasten: que difieran en **al menos tres ejes**
    (estilo, superficie, tipografía, estructura de cabecera) y que ninguna sea la

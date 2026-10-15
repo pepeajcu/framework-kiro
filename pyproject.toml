@@ -51,6 +51,9 @@ package = false                   # es una aplicación, no una librería instala
 target-version = "py312"
 line-length = 100
 src = ["app", "tests"]
+# Vendored, byte for byte, with a hash in vendor.lock.json (scripts/vendor_uupm.py):
+# formatting it would make `verify` fail, and it is not our style to enforce.
+extend-exclude = [".claude/skills/kiro-design/uupm"]
 
 [tool.ruff.lint]
 select = [

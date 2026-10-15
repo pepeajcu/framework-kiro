@@ -139,6 +139,7 @@ DISTINCTIVE = {
     "floating-pill": "rounded-full",
     "industrial-rule": "border-b-2",
     "terminal-bar": "bg-foreground text-background",
+    "ios-bar": "material-regular",
     "custom": "backdrop-blur",
 }
 
@@ -639,3 +640,20 @@ def test_a_broken_contract_is_reported_on_the_page(
 
     assert response.status_code == 200
     assert "brand.primary" in response.text
+
+
+def test_the_kit_section_exists_only_for_a_project_with_a_kit(
+    client: TestClient, project_contract: Callable[[DesignContract], None]
+) -> None:
+    project_contract(PRESETS["ios"].contract)
+    with_kit = client.get("/_design")
+
+    assert with_kit.status_code == 200
+    page = with_kit.text
+    assert 'id="kit"' in page and "Kit iOS" in page
+    for part in ("ios-list", "ios-segmented", "ios-tabbar", 'class="ios-sheet"', "ios-large-title"):
+        assert part in page, part
+
+    project_contract(PRESETS["minimalista"].contract)
+    without = client.get("/_design").text
+    assert 'id="kit"' not in without and "ios-list" not in without

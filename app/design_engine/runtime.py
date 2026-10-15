@@ -37,6 +37,8 @@ class DesignRuntime:
     """The slice of the contract that templates read."""
 
     dark: bool = False
+    #: `surface = "auto"`: the page follows the system's light or dark preference.
+    auto: bool = False
     header: str = "sticky-blur"
     motion_level: int = 3
     preload_fonts: tuple[str, ...] = ()
@@ -52,7 +54,9 @@ def runtime_from_contract(contract: DesignContract, static_dir: Path) -> DesignR
     """Resolve `contract` against the files that actually exist under `static_dir`."""
     preload: list[str] = []
     body = contract.typography.body
-    if body is not None:
+    # With the system font first there is nothing to preload: on Apple devices the
+    # local file is never requested, and preloading it would force the download.
+    if body is not None and body.fallback != "system":
         # The regular weight carries nearly all running text; preloading more
         # than one file costs more than the swap it avoids.
         weight = 400 if 400 in body.weights else body.weights[0]
@@ -63,6 +67,7 @@ def runtime_from_contract(contract: DesignContract, static_dir: Path) -> DesignR
     head, rest = scripts_for(contract.motion.level, static_dir)
     return DesignRuntime(
         dark=contract.brand.surface == "dark",
+        auto=contract.brand.surface == "auto",
         header=contract.structure.header,
         motion_level=contract.motion.level,
         preload_fonts=tuple(preload),

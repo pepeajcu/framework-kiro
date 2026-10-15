@@ -1,0 +1,19 @@
+{#
+  405 — la dirección existe pero no acepta esa acción (un GET a algo que solo
+  se borra con DELETE). Antes salía el JSON {"detail": ...} de Starlette.
+#}
+{% extends "layouts/app.html" %}
+{% block title %}Acción no permitida — {{ settings.app_name }}{% endblock %}
+{% block description %}Esa acción no está permitida aquí.{% endblock %}
+
+{% block content %}
+<section class="py-16 text-center">
+  <p class="text-muted-foreground font-mono text-sm">405</p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight">Acción no permitida</h1>
+  <p class="text-muted-foreground mx-auto mt-3 max-w-md text-pretty">
+    Esta dirección existe, pero no admite esa acción. Si llegaste desde un enlace,
+    puede que esté desactualizado.
+  </p>
+  <a href="/" class="btn mt-6" data-variant="primary">Volver al inicio</a>
+</section>
+{% endblock %}

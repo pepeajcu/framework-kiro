@@ -23,7 +23,7 @@ valores que te pase quien lo configuró.
 
 ```bash
 make help      # lista todo lo disponible
-make check     # lint + tipos + tests + migraciones — es lo que corre CI
+make check     # lint + tipos + css + diseño + arquitectura + tests + migraciones — es lo que corre CI
 make revision m="añade tabla de proveedores"   # nueva migración
 make css       # recompila Tailwind
 ```

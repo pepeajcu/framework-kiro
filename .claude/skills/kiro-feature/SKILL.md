@@ -137,7 +137,16 @@ class ProviderCreate(BaseModel):
 Put it in `app/services/provider.py` when there are rules to enforce (uniqueness,
 state transitions, side effects). Services receive a `Session`, build the
 repositories they need, and raise domain exceptions from `app/exceptions.py`.
-Skip this layer for plain CRUD — an empty pass-through service is noise.
+
+**Reads may skip it, writes may not.** A page that only lists or shows rows can
+call the repository straight from the router (as step 6 does). Anything that
+creates, changes or deletes goes through a service, even when it starts as one
+line: that is where the next rule (ownership, uniqueness, an email to send) will
+land, and `make archcheck` fails a router that writes through a repository (K4).
+No service: no logic, no writes.
+
+`app/routers/notes.py` is the whole path running, with its tests in
+`tests/test_notes.py`. Read it before writing your first feature.
 
 ## 6. Router
 
@@ -152,6 +161,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from app.deps import DbSession, OptionalUser
+from app.exceptions import NotFoundError
 from app.repositories.provider import ProviderRepository
 from app.templating import render
 
@@ -174,10 +184,12 @@ def provider_detail(request: Request, db: DbSession, user: OptionalUser, slug: s
     return render(request, "pages/providers/detail.html", {"provider": provider})
 ```
 
-`user: OptionalUser` on every page handler, even public ones — it is what
-resolves the session cookie and therefore what makes the header show who is
-logged in. Use `CurrentUser` where the page requires an account, and
+`user: OptionalUser` on every handler that renders a page, even public ones, and
+**including a POST that re-renders its form with a 400** — it is what resolves
+the session cookie and therefore what makes the header show who is logged in.
+Use `CurrentUser` where the page requires an account, and
 `Annotated[User, Depends(require_role("admin"))]` where it requires a role.
+`make archcheck` fails a handler that renders `pages/...` without one (K7).
 
 Register it in `app/main.py`:
 
@@ -237,10 +249,15 @@ A form page needs the CSRF token, or the POST comes back 403:
 ```jinja
 <form method="post" action="/providers/new" class="space-y-4">
   {% include "components/csrf_field.html" %}
-  {{ field("name", "Nombre", value=name, errors=errors) }}
+  {{ field("name", "Nombre", form=form) }}
   <button class="btn" data-variant="primary" type="submit">Guardar</button>
 </form>
 ```
+
+`form` is what `validate_form` returns (next section). `field`, `textarea`, `select` and
+`checkbox` (all in `components/form.html.jinja`) read from it what the person typed and the
+error of each field, and link the error and the help to the control (`aria-describedby`).
+Begin the template with `{% set form = form | default(none) %}`, because the GET has no form.
 
 An `include`, not a macro: Jinja macros do not see the template context unless
 imported `with context`, and forgetting that renders an empty token and fails at
@@ -248,8 +265,35 @@ submit time. HTMX requests need nothing — `base.html` sends the token in a
 header for all of them.
 
 Answer a successful POST with a 303 redirect (post/redirect/get) and a failed
-one by re-rendering the form with a 400. `app/routers/auth.py` is the worked
-example.
+one by re-rendering the form with a 400. **`validate_form` does the bookkeeping:**
+
+```python
+from app.hypermedia import flash
+from app.schemas import validate_form
+
+form = validate_form(ProviderCreate, name=name, description=description)  # never raises
+if form.data is None:  # what was typed and the errors travel in `form`; passwords never do
+    return render(request, "pages/providers/new.html", {"form": form}, status_code=400)
+
+ProviderService(db).create(form.data.name, form.data.description)
+return flash(RedirectResponse("/providers", status_code=303), settings, "Proveedor creado")
+```
+
+Something that belongs to no field (a wrong password, a taken address) is
+`form.with_errors({"email": "Ya existe una cuenta"})`; `{"__all__": "..."}` is the general one.
+`flash` leaves a one-time message: the next full page shows it as a toast and deletes it
+(a signed cookie, two minutes), so the redirect can say "Proveedor creado". An HTMX call
+answers with `toast_response(request, title="...")` instead. `app/routers/notes.py` and
+`app/routers/auth.py` are the worked examples. `base.html` tells HTMX to swap 400 and 422 responses, so the same
+re-render also works for an `hx-post` form.
+
+**Errors for an HTMX call are a toast, not a page.** Raise the domain exceptions
+(`NotFoundError`, `PermissionDeniedError`) as usual: `app/main.py` answers a
+navigation with the error page and an HTMX call with a toast, same status code,
+through `app.hypermedia.error_response`. For your own message use
+`toast_response(request, title=..., category="success")`. Never write
+`toaster.toast({...})` in JavaScript with text a visitor can influence:
+Basecoat's JS API does not escape it, the server-rendered toast does.
 
 For an HTMX interaction, the fragment goes in `partials/` and does **not**
 extend any layout:
@@ -282,4 +326,7 @@ def test_provider_list_renders(client, db_session):
 make check
 ```
 
-Do not report the feature as done until this passes.
+It runs lint, types, the Tailwind build, the design contract, the architecture
+check (`make archcheck`: layers, CSRF, hard-coded colours...), the tests and the
+migration drift check: the same as CI. Do not report the feature as done until
+this passes.

@@ -14,7 +14,7 @@ Start from `make design-init preset=oscuro-tecnologico`; the preset writes this:
 [brand]
 primary   = "#38BDF8"
 neutral   = "cool"   # pure | warm | cool | tinted
-surface   = "dark"   # light | cream | dark
+surface   = "dark"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "0.375rem"
 
@@ -31,7 +31,8 @@ theme = "mira"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 5   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "terminal-bar"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "terminal-bar"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 6   # 1 aireado ... 10 denso
 ```
 
 `surface = "dark"` makes the whole site dark: the engine puts the dark palette on

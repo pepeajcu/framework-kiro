@@ -52,7 +52,7 @@ El instalador pregunta qué hacer con el historial:
 
 ```bash
 make dev        # arrancar con recarga automática
-make check      # lint + tipos + tests + migraciones — antes de cada commit
+make check      # lint + tipos + css + diseño + arquitectura + tests + migraciones — antes de cada commit
 make help       # todos los comandos
 ```
 

@@ -47,35 +47,21 @@ jobs:
       - name: Instalar dependencias
         run: uv sync --frozen
 
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Formato
-        run: uv run ruff format --check .
-
-      - name: Tipos
-        run: uv run mypy app
-
-      - name: Compilar CSS
-        # Si Tailwind falla, la app arranca pero sin estilos. Mejor que falle aquí.
-        run: uv run tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
-
-      - name: Contrato de diseño
-        # design.toml compila, input.css está al día con él y las fuentes y
-        # librerías de motion que declara existen. `--allow-defaults` porque el
-        # framework se distribuye sin identidad elegida; en un proyecto con
-        # identidad, esos mismos errores siguen fallando.
-        run: uv run python -m scripts.design check --allow-defaults
-
       - name: Migraciones
+        # `make check` termina con `alembic check`, que compara los modelos con
+        # la base: tiene que estar migrada antes.
         run: uv run alembic upgrade head
 
-      - name: Sin migraciones pendientes
-        # Detecta el olvido clásico: cambiar un modelo y no generar la migración.
-        run: uv run alembic check
-
-      - name: Tests
-        run: uv run pytest --cov --cov-report=term-missing
+      - name: Puerta de calidad (make check)
+        # Exactamente lo que corres en local: lint, formato, tipos, Tailwind,
+        # reglas de arquitectura (archcheck), contrato de diseño, tests y
+        # migraciones pendientes. Una sola definición de "en verde": antes CI
+        # tenía su propia lista de pasos y podía irse de la de `make check`.
+        # El contrato de diseño va con --allow-defaults (el Makefile lo pone):
+        # el framework se distribuye sin identidad elegida.
+        env:
+          PYTEST_ADDOPTS: --cov --cov-report=term-missing
+        run: make check
 
       - name: Auditoría de dependencias
         run: uv run pip-audit

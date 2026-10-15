@@ -25,6 +25,32 @@ class Paths:
         return self.root / "DESIGN.md"
 
     @property
+    def work(self) -> Path:
+        """`.design/`: proposals and backups. Never committed (`.gitignore`)."""
+        return self.root / ".design"
+
+    @property
+    def proposals(self) -> Path:
+        return self.work / "proposals"
+
+    @property
+    def skills(self) -> Path:
+        return self.root / ".claude" / "skills"
+
+    @property
+    def skill(self) -> Path:
+        return self.root / ".claude" / "skills" / "kiro-design"
+
+    @property
+    def uupm(self) -> Path:
+        """The vendored advisor (`scripts/vendor_uupm.py`)."""
+        return self.skill / "uupm"
+
+    @property
+    def uupm_overlay(self) -> Path:
+        return self.skill / "uupm-kiro"
+
+    @property
     def static(self) -> Path:
         return self.root / "app" / "static"
 

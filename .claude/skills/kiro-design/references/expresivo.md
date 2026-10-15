@@ -15,7 +15,7 @@ Start from `make design-init preset=expresivo`; the preset writes this:
 [brand]
 primary   = "#EA580C"
 neutral   = "tinted"   # pure | warm | cool | tinted
-surface   = "cream"   # light | cream | dark
+surface   = "cream"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "1.5rem"
 
@@ -32,7 +32,8 @@ theme = "rhea"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 8   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "custom"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "custom"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 3   # 1 aireado ... 10 denso
 ```
 
 `header = "custom"` is deliberate: an expressive site's header is part of the

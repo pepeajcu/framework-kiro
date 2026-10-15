@@ -16,12 +16,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import ValidationError
 
 from app.analytics import AnalyticsEvent
 from app.deps import Analytics, AppSettings, DbSession, Emailer, OptionalUser
 from app.exceptions import ConflictError, InvalidCredentialsError, InvalidTokenError
-from app.schemas import form_errors
+from app.schemas import validate_form
 from app.schemas.auth import ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
 from app.security import (
     SESSION_COOKIE_NAME,
@@ -30,7 +29,7 @@ from app.security import (
     unsign_session_token,
 )
 from app.services.auth import AuthService
-from app.services.consent import has_marketing_consent
+from app.services.consent import CONSENT_COOKIE, has_marketing_consent
 from app.services.rate_limit import (
     RateLimit,
     RateLimiter,
@@ -84,7 +83,7 @@ def _track_signal(
     analytics endpoint can never add latency to a login or a signup. Skipped
     entirely without consent — see `app.services.consent`.
     """
-    if not has_marketing_consent(request):
+    if not has_marketing_consent(request.cookies.get(CONSENT_COOKIE)):
         return
     background_tasks.add_task(
         analytics.track,
@@ -114,6 +113,7 @@ def login(
     settings: AppSettings,
     background_tasks: BackgroundTasks,
     analytics: Analytics,
+    user: OptionalUser,
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
     next_url: Annotated[str, Form(alias="next")] = "/",
@@ -121,6 +121,7 @@ def login(
     """Check the credentials and open a session."""
     target = safe_next_url(next_url)
     service = AuthService(db, settings)
+    form = validate_form(LoginForm, email=email, password=password)
 
     ip, user_agent = _client_fingerprint(request)
     limiter = RateLimiter(db)
@@ -137,20 +138,16 @@ def login(
         return render(
             request,
             "pages/auth/login.html",
-            {"errors": {"__all__": RATE_LIMITED_MESSAGE}, "email": email, "next": target},
+            {"form": form.with_errors({"__all__": RATE_LIMITED_MESSAGE}), "next": target},
             status_code=TOO_MANY_REQUESTS,
         )
 
-    try:
-        form = LoginForm(email=email, password=password)
-        user = service.authenticate(email=form.email, password=form.password)
-    except ValidationError as exc:
+    if form.data is None:
         return render(
-            request,
-            "pages/auth/login.html",
-            {"errors": form_errors(exc), "email": email, "next": target},
-            status_code=400,
+            request, "pages/auth/login.html", {"form": form, "next": target}, status_code=400
         )
+    try:
+        account = service.authenticate(email=form.data.email, password=form.data.password)
     except InvalidCredentialsError:
         # Only real credential failures count. A malformed address never reached
         # a password check, and counting typos would lock people out of their
@@ -163,8 +160,7 @@ def login(
             request,
             "pages/auth/login.html",
             {
-                "errors": {"__all__": "Email o contraseña incorrectos"},
-                "email": email,
+                "form": form.with_errors({"__all__": "Email o contraseña incorrectos"}),
                 "next": target,
             },
             status_code=400,
@@ -172,13 +168,13 @@ def login(
 
     # The attempts that led here were somebody remembering their own password.
     limiter.reset(buckets)
-    token = service.start_session(user, ip_address=ip, user_agent=user_agent)
+    token = service.start_session(account, ip_address=ip, user_agent=user_agent)
     _track_signal(
         background_tasks,
         analytics,
         request,
         name="login",
-        email=user.email,
+        email=account.email,
         ip=ip,
         user_agent=user_agent,
     )
@@ -235,6 +231,7 @@ def register(
     settings: AppSettings,
     background_tasks: BackgroundTasks,
     analytics: Analytics,
+    user: OptionalUser,
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
     full_name: Annotated[str, Form()] = "",
@@ -242,21 +239,15 @@ def register(
     """Create an account and log the new user straight in."""
     _guard_registration(settings)
     service = AuthService(db, settings)
-    submitted = {"email": email, "full_name": full_name}
+    form = validate_form(RegisterForm, email=email, password=password, full_name=full_name)
+    if form.data is None:
+        return render(request, "pages/auth/register.html", {"form": form}, status_code=400)
 
     try:
-        form = RegisterForm(email=email, password=password, full_name=full_name)
-        user = service.register(
-            email=form.email,
-            password=form.password,
-            full_name=form.full_name,
-        )
-    except ValidationError as exc:
-        return render(
-            request,
-            "pages/auth/register.html",
-            {"errors": form_errors(exc), **submitted},
-            status_code=400,
+        account = service.register(
+            email=form.data.email,
+            password=form.data.password,
+            full_name=form.data.full_name,
         )
     except ConflictError:
         # Registration cannot hide that an address is taken — the account has to
@@ -264,18 +255,18 @@ def register(
         return render(
             request,
             "pages/auth/register.html",
-            {"errors": {"email": "Ya existe una cuenta con este email"}, **submitted},
+            {"form": form.with_errors({"email": "Ya existe una cuenta con este email"})},
             status_code=400,
         )
 
     ip, user_agent = _client_fingerprint(request)
-    token = service.start_session(user, ip_address=ip, user_agent=user_agent)
+    token = service.start_session(account, ip_address=ip, user_agent=user_agent)
     _track_signal(
         background_tasks,
         analytics,
         request,
         name="sign_up",
-        email=user.email,
+        email=account.email,
         ip=ip,
         user_agent=user_agent,
     )
@@ -300,22 +291,17 @@ def forgot_password(
     db: DbSession,
     settings: AppSettings,
     emailer: Emailer,
+    user: OptionalUser,
     email: Annotated[str, Form()] = "",
 ) -> Response:
     """Send a reset link, and say the same thing either way."""
-    try:
-        form = ForgotPasswordForm(email=email)
-    except ValidationError as exc:
-        return render(
-            request,
-            "pages/auth/forgot_password.html",
-            {"errors": form_errors(exc), "email": email},
-            status_code=400,
-        )
+    form = validate_form(ForgotPasswordForm, email=email)
+    if form.data is None:
+        return render(request, "pages/auth/forgot_password.html", {"form": form}, status_code=400)
 
     ip, _ = _client_fingerprint(request)
     limiter = RateLimiter(db)
-    buckets = password_reset_buckets(ip=ip, email=form.email)
+    buckets = password_reset_buckets(ip=ip, email=form.data.email)
     limit = RateLimit(
         max_attempts=settings.password_reset_max_requests,
         window=dt.timedelta(minutes=settings.password_reset_window_minutes),
@@ -328,16 +314,16 @@ def forgot_password(
         return render(
             request,
             "pages/auth/forgot_password.html",
-            {"errors": {"__all__": RATE_LIMITED_MESSAGE}, "email": email},
+            {"form": form.with_errors({"__all__": RATE_LIMITED_MESSAGE})},
             status_code=TOO_MANY_REQUESTS,
         )
     limiter.record(buckets)
 
-    AuthService(db, settings).request_password_reset(form.email, emailer=emailer)
+    AuthService(db, settings).request_password_reset(form.data.email, emailer=emailer)
 
     # Always the same page, whether or not the address exists. A form that
     # answers "we have no such user" is a way to enumerate every user.
-    return render(request, "pages/auth/forgot_password_sent.html", {"email": form.email})
+    return render(request, "pages/auth/forgot_password_sent.html", {"email": form.data.email})
 
 
 @router.get("/reset-password/{token}", response_class=HTMLResponse)
@@ -345,6 +331,7 @@ def reset_password_form(
     request: Request,
     db: DbSession,
     settings: AppSettings,
+    user: OptionalUser,
     token: str,
 ) -> Response:
     """The "choose a new password" form, if the link is still good."""
@@ -361,6 +348,7 @@ def reset_password(
     request: Request,
     db: DbSession,
     settings: AppSettings,
+    user: OptionalUser,
     token: str,
     password: Annotated[str, Form()] = "",
     password_confirm: Annotated[str, Form()] = "",
@@ -368,18 +356,17 @@ def reset_password(
     """Set the new password and log the user in on this browser only."""
     service = AuthService(db, settings)
 
-    try:
-        form = ResetPasswordForm(password=password, password_confirm=password_confirm)
-    except ValidationError as exc:
+    form = validate_form(ResetPasswordForm, password=password, password_confirm=password_confirm)
+    if form.data is None:
         return render(
             request,
             "pages/auth/reset_password.html",
-            {"errors": form_errors(exc), "token": token},
+            {"form": form, "token": token},
             status_code=400,
         )
 
     try:
-        user = service.reset_password(token, form.password)
+        account = service.reset_password(token, form.data.password)
     except InvalidTokenError:
         return render(request, "pages/auth/reset_password_invalid.html", status_code=400)
 
@@ -387,7 +374,7 @@ def reset_password(
     # included. Opening a fresh one is what makes the flow end logged in
     # rather than back at the login form.
     ip, user_agent = _client_fingerprint(request)
-    new_session = service.start_session(user, ip_address=ip, user_agent=user_agent)
+    new_session = service.start_session(account, ip_address=ip, user_agent=user_agent)
 
     response = RedirectResponse("/", status_code=SEE_OTHER)
     set_session_cookie(response, new_session, settings)

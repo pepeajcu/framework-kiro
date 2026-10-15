@@ -14,7 +14,7 @@ Start from `make design-init preset=retro-y2k`; the preset writes this:
 [brand]
 primary   = "#2F5BFF"
 neutral   = "tinted"   # pure | warm | cool | tinted
-surface   = "light"   # light | cream | dark
+surface   = "light"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "1.5rem"
 
@@ -31,7 +31,8 @@ theme = "luma"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 6   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "floating-pill"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "floating-pill"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 4   # 1 aireado ... 10 denso
 ```
 
 ## Composition

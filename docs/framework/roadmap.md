@@ -78,6 +78,31 @@ Lo mínimo para usar Kiro en un proyecto real y validar el flujo con la IA.
 - [x] ADRs 0014–0015
 - [x] Tag y publicación
 
+## v1.3.0 — Cimientos, diseño multifuente y kit iOS  *(implementada, sin publicar)*
+
+Plan completo en [`docs/optimizacion/plan-v2.md`](../optimizacion/plan-v2.md).
+
+- [x] **Fase 1 — Cimientos:** `make check` = CI, `make archcheck` (K1-K8, J1-J5),
+      contrato de errores y avisos de HTMX, escapado de `.jinja`, cabeceras en el 500
+      ([ADR-0016](../decisions/0016-make-check-es-ci-y-reglas-comprobadas.md),
+      [ADR-0017](../decisions/0017-errores-y-avisos-de-htmx.md))
+- [x] **Fase 2 — Constitución de diseño y tubería única** (`DesignBrief` → `propose` →
+      `design-apply`, reglas `P1`-`P10`, `[rules] allow`, preset `estandar-shadcn`;
+      [ADR-0018](../decisions/0018-constitucion-de-diseno-y-tuberia-unica.md))
+- [x] **Fase 3 — uupm integrado y juez determinista** (asesor vendorizado, `make design-advise`,
+      bloque `kiro:a11y`, `tests/test_ux_floor.py`; [ADR-0019](../decisions/0019-uupm-vendorizado-con-solapamiento.md))
+- [x] **Fase 4 — Kit iOS completo y `surface = "auto"`** (preset `ios`, kit compilado,
+      `components/ios.html.jinja`, cabecera `ios-bar`, fuente del sistema;
+      [ADR-0020](../decisions/0020-kit-ios-superficie-auto-y-fuente-del-sistema.md))
+- [x] **Fase 5 — Entradas externas** (`/kiro-style`, `make design-reference`, lector de DESIGN.md
+      de Refero/skillui/Stitch, captura de webs, envoltorio de skillui;
+      [ADR-0021](../decisions/0021-referencias-externas-un-lector-y-candados.md))
+- [x] **Fase 6 — Avisos tras redirección y formularios con memoria** (`validate_form`, cookie
+      flash firmada, macros `textarea`/`select`/`checkbox`;
+      [ADR-0022](../decisions/0022-formularios-con-memoria-y-avisos-tras-redireccion.md))
+- [x] **Fase 7 — Densidad compilada y estados** (`[structure] density`, bloque `kiro:rhythm`,
+      `components/states.html.jinja`; [ADR-0023](../decisions/0023-densidad-compilada-y-estados.md))
+
 ## Fuera de alcance por ahora
 
 - **Ecommerce y pagos** — entra como flag opcional cuando haya un proyecto real
