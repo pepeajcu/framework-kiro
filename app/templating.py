@@ -14,17 +14,34 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.branding import find_logo, logo_path_relative_to_static
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.design_engine.runtime import DesignProxy
+from app.security import FLASH_COOKIE_NAME, unsign_flash
 from app.services.consent import CONSENT_COOKIE
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+# Escape by file extension, and include `.jinja`. Starlette's own default list is
+# html/htm/xml, so the component macros (`*.html.jinja`: the form fields, the
+# toast) would print whatever a visitor typed as raw HTML. The Basecoat macros
+# already mark what is meant to be markup with `| safe`; the rest has to be
+# escaped. Plain-text email is rendered through an overlay that turns this off
+# again (app/emails/render.py).
+_environment = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(
+        enabled_extensions=("html", "htm", "xml", "jinja"),
+        default_for_string=True,
+        default=False,
+    ),
+)
+
+templates = Jinja2Templates(env=_environment)
 
 
 def asset(path: str) -> str:
@@ -65,12 +82,17 @@ def brand_logo() -> str | None:
     return asset(logo_path_relative_to_static(logo)) if logo else None
 
 
-templates.env.globals["settings"] = get_settings()
+class _LazySettingsProxy:
+    """Fallback for standalone template renders outside an HTTP request."""
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(get_settings(), name)
+
+
+templates.env.globals["settings"] = _LazySettingsProxy()
 # What `design.toml` decides about markup (header archetype, dark surface, motion
 # scripts). Re-read on change in development; resolved once in production.
-templates.env.globals["design"] = DesignProxy(
-    PROJECT_ROOT, STATIC_DIR, watch=not get_settings().is_production
-)
+templates.env.globals["design"] = DesignProxy(PROJECT_ROOT, STATIC_DIR, watch=True)
 templates.env.globals["asset"] = asset
 templates.env.globals["now_year"] = now_year
 templates.env.globals["brand_logo"] = brand_logo
@@ -102,21 +124,44 @@ def render(
     no handler has to pass them. `user` is None on pages whose handler does not
     declare `OptionalUser` or `CurrentUser`.
 
+    `flash` is the one-time message the previous request left (a dict with `category`,
+    `title`, `description`), or None.
+
     `consent` is the raw cookie-consent cookie value: `"accepted"`,
     `"rejected"`, or `None` if the visitor has not decided yet. `base.html`
     uses it to show the banner and to gate the GTM snippet — see
     `app.services.consent`.
     """
+    app_settings: Settings = getattr(request.app.state, "settings", None) or get_settings()
     merged = dict(context or {})
+    merged.setdefault("settings", app_settings)
     merged.setdefault("user", getattr(request.state, "user", None))
     # Left there by CsrfCookieMiddleware. Every form needs it, so no template
     # should have to be passed it by hand.
     merged.setdefault("csrf_token", getattr(request.state, "csrf_token", ""))
     merged.setdefault("consent", request.cookies.get(CONSENT_COOKIE))
 
-    return templates.TemplateResponse(
+    # A message left by the previous request (see `app.hypermedia.flash`) is shown on the
+    # next full page and then deleted. A fragment must not eat it: it would never be seen.
+    flash_value = request.cookies.get(FLASH_COOKIE_NAME)
+    consumes_flash = flash_value is not None and template.startswith("pages/")
+    merged.setdefault(
+        "flash",
+        unsign_flash(flash_value, app_settings) if consumes_flash and flash_value else None,
+    )
+
+    response = templates.TemplateResponse(
         request=request,
         name=template,
         context=merged,
         status_code=status_code,
     )
+    if consumes_flash:
+        response.delete_cookie(
+            FLASH_COOKIE_NAME,
+            path="/",
+            httponly=True,
+            secure=app_settings.is_production,
+            samesite="lax",
+        )
+    return response

@@ -1,0 +1,193 @@
+product_type,primary,aa,suggested,purple,saturated
+SaaS (General),#2563EB,ok,,no,yes
+Micro SaaS,#6366F1,fails,#6669F5,no,yes
+E-commerce,#059669,ok,,no,yes
+E-commerce Luxury,#1C1917,ok,,no,no
+B2B Service,#0F172A,ok,,no,no
+Financial Dashboard,#0F172A,ok,,no,no
+Analytics Dashboard,#1E40AF,ok,,no,no
+Healthcare App,#0891B2,ok,,no,yes
+Educational App,#4F46E5,ok,,no,no
+Creative Agency,#EC4899,ok,,no,yes
+Portfolio/Personal,#18181B,ok,,no,no
+Gaming,#7C3AED,ok,,yes,yes
+Government/Public Service,#0F172A,ok,,no,no
+Fintech/Crypto,#F59E0B,ok,,no,yes
+Social Media App,#E11D48,fails,#DD1645,no,no
+Productivity Tool,#0D9488,ok,,no,yes
+Design System/Component Library,#4F46E5,ok,,no,no
+AI/Chatbot Platform,#7C3AED,ok,,yes,yes
+NFT/Web3 Platform,#8B5CF6,ok,,yes,yes
+Creator Economy Platform,#EC4899,ok,,no,yes
+Remote Work/Collaboration Tool,#6366F1,fails,#6669F5,no,yes
+Mental Health App,#8B5CF6,ok,,yes,yes
+Pet Tech App,#F97316,ok,,no,yes
+Smart Home/IoT Dashboard,#1E293B,ok,,no,no
+EV/Charging Ecosystem,#0891B2,ok,,no,yes
+Subscription Box Service,#D946EF,ok,,yes,yes
+Podcast Platform,#1E1B4B,ok,,no,no
+Dating App,#E11D48,fails,#DD1645,no,no
+Micro-Credentials/Badges Platform,#0369A1,ok,,no,yes
+Knowledge Base/Documentation,#475569,ok,,no,no
+Hyperlocal Services,#059669,ok,,no,yes
+Beauty/Spa/Wellness Service,#EC4899,ok,,no,yes
+Luxury/Premium Brand,#1C1917,ok,,no,no
+Restaurant/Food Service,#DC2626,ok,,no,no
+Fitness/Gym App,#F97316,ok,,no,yes
+Real Estate/Property,#0F766E,ok,,no,no
+Travel/Tourism Agency,#0EA5E9,ok,,no,yes
+Hotel/Hospitality,#1E3A8A,ok,,no,no
+Wedding/Event Planning,#DB2777,fails,#E2307D,no,no
+Legal Services,#1E3A8A,ok,,no,no
+Insurance Platform,#0369A1,ok,,no,yes
+Banking/Traditional Finance,#0F172A,ok,,no,no
+Online Course/E-learning,#0D9488,ok,,no,yes
+Non-profit/Charity,#0891B2,ok,,no,yes
+Music Streaming,#1E1B4B,ok,,no,no
+Video Streaming/OTT,#0F0F23,ok,,no,no
+Job Board/Recruitment,#0369A1,ok,,no,yes
+Marketplace (P2P),#7C3AED,ok,,yes,yes
+Logistics/Delivery,#2563EB,ok,,no,yes
+Agriculture/Farm Tech,#15803D,ok,,no,no
+Construction/Architecture,#64748B,ok,,no,no
+Automotive/Car Dealership,#1E293B,ok,,no,no
+Photography Studio,#18181B,ok,,no,no
+Coworking Space,#F59E0B,ok,,no,yes
+Home Services (Plumber/Electrician),#1E40AF,ok,,no,no
+Childcare/Daycare,#F472B6,ok,,no,yes
+Senior Care/Elderly,#0369A1,ok,,no,yes
+Medical Clinic,#0891B2,ok,,no,yes
+Pharmacy/Drug Store,#15803D,ok,,no,no
+Dental Practice,#0EA5E9,ok,,no,yes
+Veterinary Clinic,#0D9488,ok,,no,yes
+Florist/Plant Shop,#15803D,ok,,no,no
+Bakery/Cafe,#92400E,ok,,no,yes
+Brewery/Winery,#7C2D12,ok,,no,no
+Airline,#1E3A8A,ok,,no,no
+News/Media Platform,#DC2626,ok,,no,no
+Magazine/Blog,#18181B,ok,,no,no
+Freelancer Platform,#6366F1,fails,#6669F5,no,yes
+Marketing Agency,#EC4899,ok,,no,yes
+Event Management,#7C3AED,ok,,yes,yes
+Membership/Community,#7C3AED,ok,,yes,yes
+Newsletter Platform,#0369A1,ok,,no,yes
+Digital Products/Downloads,#6366F1,fails,#6669F5,no,yes
+Church/Religious Organization,#7C3AED,ok,,yes,yes
+Sports Team/Club,#DC2626,ok,,no,no
+Museum/Gallery,#18181B,ok,,no,no
+Theater/Cinema,#1E1B4B,ok,,no,no
+Language Learning App,#4F46E5,ok,,no,no
+Coding Bootcamp,#0F172A,ok,,no,no
+Cybersecurity Platform,#00FF41,ok,,no,yes
+Developer Tool / IDE,#1E293B,ok,,no,no
+Biotech / Life Sciences,#0EA5E9,ok,,no,yes
+Space Tech / Aerospace,#F8FAFC,ok,,no,no
+Architecture / Interior,#171717,ok,,no,no
+Quantum Computing Interface,#00FFFF,ok,,no,yes
+Biohacking / Longevity App,#FF4D4D,ok,,no,yes
+Autonomous Drone Fleet Manager,#00FF41,ok,,no,yes
+Generative Art Platform,#18181B,ok,,no,no
+Spatial Computing OS / App,#FFFFFF,ok,,no,no
+Sustainable Energy / Climate Tech,#059669,ok,,no,yes
+Personal Finance Tracker,#1E40AF,ok,,no,no
+Chat & Messaging App,#2563EB,ok,,no,yes
+Notes & Writing App,#78716C,ok,,no,no
+Habit Tracker,#D97706,ok,,no,yes
+Food Delivery / On-Demand,#EA580C,ok,,no,yes
+Ride Hailing / Transportation,#1E293B,ok,,no,no
+Recipe & Cooking App,#9A3412,ok,,no,no
+Meditation & Mindfulness,#7C3AED,ok,,yes,yes
+Weather App,#0284C7,ok,,no,yes
+Diary & Journal App,#92400E,ok,,no,yes
+CRM & Client Management,#2563EB,ok,,no,yes
+Inventory & Stock Management,#334155,ok,,no,no
+Flashcard & Study Tool,#7C3AED,ok,,yes,yes
+Booking & Appointment App,#0284C7,ok,,no,yes
+Invoice & Billing Tool,#1E3A5F,ok,,no,no
+Grocery & Shopping List,#059669,ok,,no,yes
+Timer & Pomodoro,#DC2626,ok,,no,no
+Parenting & Baby Tracker,#EC4899,ok,,no,yes
+Scanner & Document Manager,#1E293B,ok,,no,no
+Calendar & Scheduling App,#2563EB,ok,,no,yes
+Password Manager,#1E3A5F,ok,,no,no
+Expense Splitter / Bill Split,#059669,ok,,no,yes
+Voice Recorder & Memo,#DC2626,ok,,no,no
+Bookmark & Read-Later,#D97706,ok,,no,yes
+Translator App,#2563EB,ok,,no,yes
+Calculator & Unit Converter,#EA580C,ok,,no,yes
+Alarm & World Clock,#D97706,ok,,no,yes
+File Manager & Transfer,#2563EB,ok,,no,yes
+Email Client,#2563EB,ok,,no,yes
+Casual Puzzle Game,#EC4899,ok,,no,yes
+Trivia & Quiz Game,#2563EB,ok,,no,yes
+Card & Board Game,#15803D,ok,,no,no
+Idle & Clicker Game,#D97706,ok,,no,yes
+Word & Crossword Game,#15803D,ok,,no,no
+Arcade & Retro Game,#DC2626,ok,,no,no
+Photo Editor & Filters,#7C3AED,ok,,yes,yes
+Short Video Editor,#EC4899,ok,,no,yes
+Drawing & Sketching Canvas,#7C3AED,ok,,yes,yes
+Music Creation & Beat Maker,#7C3AED,ok,,yes,yes
+Meme & Sticker Maker,#EC4899,ok,,no,yes
+AI Photo & Avatar Generator,#7C3AED,ok,,yes,yes
+Link-in-Bio Page Builder,#2563EB,ok,,no,yes
+Wardrobe & Outfit Planner,#BE185D,ok,,no,no
+Plant Care Tracker,#15803D,ok,,no,no
+Book & Reading Tracker,#78716C,ok,,no,no
+Couple & Relationship App,#BE185D,ok,,no,no
+Family Calendar & Chores,#2563EB,ok,,no,yes
+Mood Tracker,#7C3AED,ok,,yes,yes
+Gift & Wishlist,#DC2626,ok,,no,no
+Running & Cycling GPS,#EA580C,ok,,no,yes
+Yoga & Stretching Guide,#6B7280,ok,,no,no
+Sleep Tracker,#4338CA,ok,,no,no
+Calorie & Nutrition Counter,#059669,ok,,no,yes
+Period & Cycle Tracker,#BE185D,ok,,no,no
+Medication & Pill Reminder,#0284C7,ok,,no,yes
+Water & Hydration Reminder,#0284C7,ok,,no,yes
+Fasting & Intermittent Timer,#6366F1,fails,#6669F5,no,yes
+Anonymous Community / Confession,#475569,ok,,no,no
+Local Events & Discovery,#EA580C,ok,,no,yes
+Study Together / Virtual Coworking,#2563EB,ok,,no,yes
+Coding Challenge & Practice,#22C55E,ok,,no,no
+Kids Learning (ABC & Math),#2563EB,ok,,no,yes
+Music Instrument Learning,#DC2626,ok,,no,no
+Parking Finder,#2563EB,ok,,no,yes
+Public Transit Guide,#2563EB,ok,,no,yes
+Road Trip Planner,#EA580C,ok,,no,yes
+VPN & Privacy Tool,#1E3A5F,ok,,no,no
+Emergency SOS & Safety,#DC2626,ok,,no,no
+Wallpaper & Theme App,#7C3AED,ok,,yes,yes
+White Noise & Ambient Sound,#475569,ok,,no,no
+Home Decoration & Interior Design,#78716C,ok,,no,no
+Academic Journal / Scholarly Publishing,#1E3A5F,ok,,no,no
+API Developer Portal,#0F172A,ok,,no,no
+Forum / Discussion Board,#475569,ok,,no,no
+Directory / Listing Site,#059669,ok,,no,yes
+Status Page / Incident Management,#16A34A,ok,,no,no
+Wiki / Encyclopedia,#1E3A8A,ok,,no,no
+Auction Platform,#0F172A,ok,,no,no
+Changelog / Release Notes,#475569,ok,,no,no
+Citizen Science Platform,#15803D,ok,,no,no
+Classifieds / Buy-Sell,#2563EB,ok,,no,yes
+Conference / Symposium Landing Page,#1E3A5F,ok,,no,no
+Crowdfunding Platform,#D97706,ok,,no,yes
+Digital Signage / Kiosk,#0F172A,ok,,no,no
+E-signature / Document Workflow,#1E3A5F,ok,,no,no
+Feature Flag / Config Management,#0F172A,ok,,no,no
+Government Portal / Civic Services,#1E40AF,ok,,no,no
+Grant / Funding Portal,#1E3A5F,ok,,no,no
+LMS (Learning Management System),#0D9488,ok,,no,yes
+No-code / Low-code Builder,#7C3AED,ok,,yes,yes
+Open Source Project Landing,#0F172A,ok,,no,no
+Patient Portal / Health Records,#0284C7,ok,,no,yes
+Patent / IP Database,#475569,ok,,no,no
+Q&A Community Platform,#2563EB,ok,,no,yes
+Research Lab / University Department,#1E3A5F,ok,,no,no
+Resume / CV Builder,#1E3A5F,ok,,no,no
+Review Platform,#F59E0B,ok,,no,yes
+RPA / Automation Dashboard,#0F172A,ok,,no,no
+Survey / Form Builder,#0D9488,ok,,no,yes
+Telemedicine Platform,#0891B2,ok,,no,yes
+Testimonial & Social Proof Widget,#7C3AED,ok,,yes,yes
+Ticketing / Box Office,#0F172A,ok,,no,no

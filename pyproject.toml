@@ -2,7 +2,7 @@
 name = "kiro-app"
 version = "0.1.0"
 description = "Application built with the Kiro framework"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.15"
 
 dependencies = [
     # --- Web ---
@@ -51,6 +51,9 @@ package = false                   # es una aplicación, no una librería instala
 target-version = "py312"
 line-length = 100
 src = ["app", "tests"]
+# Vendored, byte for byte, with a hash in vendor.lock.json (scripts/vendor_uupm.py):
+# formatting it would make `verify` fail, and it is not our style to enforce.
+extend-exclude = [".claude/skills/kiro-design/uupm"]
 
 [tool.ruff.lint]
 select = [

@@ -16,7 +16,7 @@
 
 ## Identidad
 
-- **Estilo:** TODO <!-- minimalista | suave-premium | brutalista | institucional | expresivo | panel-de-datos | editorial | organico | neo-brutalista | retro-y2k | oscuro-tecnologico | o una descripción propia -->
+- **Estilo:** TODO <!-- minimalista | suave-premium | brutalista | institucional | expresivo | panel-de-datos | editorial | organico | neo-brutalista | retro-y2k | oscuro-tecnologico | estandar-shadcn | ios | o una descripción propia -->
 - **Referencias:** TODO <!-- webs o marcas que te gustan (opcional) -->
 - **Público:** TODO <!-- quién lo usa: define el tono más que el gusto -->
 - **Tono de los textos:** TODO <!-- ej. cercano y directo / sobrio y técnico -->
@@ -90,3 +90,18 @@
 
 TODO <!-- ej. "no genérico de SaaS", "nada infantil". Frena a la IA tanto como
           lo que sí quieres. -->
+
+## Decisiones de diseño
+
+<!-- Lo que se decidió a propósito y no debe volver a preguntarse: una regla de
+     gusto permitida (`[rules] allow` en design.toml) con su motivo, un color
+     que tuvo que moverse para llegar a contraste, un choque entre fuentes de
+     diseño resuelto. `make design-apply` añade aquí lo que decidió; a mano, una
+     línea por decisión, con fecha y motivo. Accesibilidad, uso táctil y
+     rendimiento no se relajan nunca: no se anotan aquí. -->
+
+## Procedencia
+
+<!-- De dónde salió cada dirección de diseño: un estilo, un brief, una web de
+     referencia (URL y fecha). Se toma el lenguaje visual, nunca logos,
+     imágenes, código ni fuentes. `make design-apply` añade aquí su línea. -->

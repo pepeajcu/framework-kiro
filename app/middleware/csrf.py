@@ -32,8 +32,8 @@ from starlette.responses import Response
 
 from app.config import Settings
 from app.exceptions import CsrfError
+from app.security import CSRF_COOKIE_NAME, new_csrf_token, set_csrf_cookie
 
-CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 CSRF_FIELD_NAME = "csrf_token"
 
@@ -41,11 +41,6 @@ CSRF_FIELD_NAME = "csrf_token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
 _FORM_CONTENT_TYPES = ("application/x-www-form-urlencoded", "multipart/form-data")
-
-
-def new_csrf_token() -> str:
-    """Mint a token for a browser that does not have one yet."""
-    return secrets.token_urlsafe(32)
 
 
 class CsrfCookieMiddleware(BaseHTTPMiddleware):
@@ -70,19 +65,12 @@ class CsrfCookieMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        if existing is None:
-            response.set_cookie(
-                CSRF_COOKIE_NAME,
-                token,
-                max_age=self.settings.session_lifetime_days * 24 * 60 * 60,
-                # HttpOnly is safe here because the token reaches the page from
-                # the server, rendered into the form and into `hx-headers` — no
-                # JavaScript ever needs to read the cookie.
-                httponly=True,
-                secure=self.settings.is_production,
-                samesite="lax",
-                path="/",
-            )
+        already_set = any(
+            header.startswith(f"{CSRF_COOKIE_NAME}=")
+            for header in response.headers.getlist("set-cookie")
+        )
+        if existing is None and not already_set:
+            set_csrf_cookie(response, token, self.settings)
 
         return response
 

@@ -1,0 +1,89 @@
+style_id,name,preset
+minimalism-and-swiss-style,Minimalism & Swiss Style,brutalista
+neumorphism,Neumorphism,suave-premium
+glassmorphism,Glassmorphism,ios
+brutalism,Brutalism,brutalista
+3d-and-hyperrealism,3D & Hyperrealism,
+vibrant-and-block-based,Vibrant & Block-based,expresivo
+dark-mode-oled,Dark Mode (OLED),
+accessible-and-ethical,Accessible & Ethical,estandar-shadcn
+claymorphism,Claymorphism,suave-premium
+aurora-ui,Aurora UI,expresivo
+retro-futurism,Retro-Futurism,retro-y2k
+flat-design,Flat Design,minimalista
+skeuomorphism,Skeuomorphism,expresivo
+liquid-glass,Liquid Glass,ios
+motion-driven,Motion-Driven,expresivo
+micro-interactions,Micro-interactions,
+inclusive-design,Inclusive Design,
+zero-interface,Zero Interface,minimalista
+soft-ui-evolution,Soft UI Evolution,suave-premium
+hero-centric-design,Hero-Centric Design,
+conversion-optimized,Conversion-Optimized,institucional
+feature-rich-showcase,Feature-Rich Showcase,
+minimal-and-direct,Minimal & Direct,minimalista
+social-proof-focused,Social Proof-Focused,
+interactive-product-demo,Interactive Product Demo,
+trust-and-authority,Trust & Authority,institucional
+storytelling-driven,Storytelling-Driven,expresivo
+data-dense-dashboard,Data-Dense Dashboard,panel-de-datos
+heat-map-and-heatmap-style,Heat Map & Heatmap Style,expresivo
+executive-dashboard,Executive Dashboard,panel-de-datos
+real-time-monitoring,Real-Time Monitoring,
+drill-down-analytics,Drill-Down Analytics,panel-de-datos
+comparative-analysis-dashboard,Comparative Analysis Dashboard,panel-de-datos
+predictive-analytics,Predictive Analytics,panel-de-datos
+user-behavior-analytics,User Behavior Analytics,panel-de-datos
+financial-dashboard,Financial Dashboard,panel-de-datos
+sales-intelligence-dashboard,Sales Intelligence Dashboard,panel-de-datos
+neubrutalism,Neubrutalism,brutalista
+bento-box-grid,Bento Box Grid,panel-de-datos
+y2k-aesthetic,Y2K Aesthetic,retro-y2k
+cyberpunk-ui,Cyberpunk UI,oscuro-tecnologico
+organic-biophilic,Organic Biophilic,organico
+ai-native-ui,AI-Native UI,minimalista
+memphis-design,Memphis Design,oscuro-tecnologico
+vaporwave,Vaporwave,retro-y2k
+dimensional-layering,Dimensional Layering,
+exaggerated-minimalism,Exaggerated Minimalism,minimalista
+kinetic-typography,Kinetic Typography,editorial
+parallax-storytelling,Parallax Storytelling,
+swiss-modernism-2-0,Swiss Modernism 2.0,brutalista
+hud-sci-fi-fui,HUD / Sci-Fi FUI,oscuro-tecnologico
+pixel-art,Pixel Art,retro-y2k
+bento-grids,Bento Grids (Legacy),panel-de-datos
+spatial-ui-visionos,Spatial UI (VisionOS),ios
+e-ink-paper,E-Ink / Paper,minimalista
+gen-z-chaos-maximalism,Gen Z Chaos / Maximalism,expresivo
+biomimetic-organic-2-0,Biomimetic / Organic 2.0,organico
+anti-polish-raw-aesthetic,Anti-Polish / Raw Aesthetic,
+tactile-digital-deformable-ui,Tactile Digital / Deformable UI,
+nature-distilled,Nature Distilled,organico
+interactive-cursor-design,Interactive Cursor Design,
+voice-first-multimodal,Voice-First Multimodal,
+3d-product-preview,3D Product Preview,
+gradient-mesh-aurora-evolved,Gradient Mesh / Aurora Evolved,expresivo
+editorial-grid-magazine,Editorial Grid / Magazine,editorial
+chromatic-aberration-rgb-split,Chromatic Aberration / RGB Split,retro-y2k
+vintage-analog-retro-film,Vintage Analog / Retro Film,retro-y2k
+bauhaus,Bauhaus (包豪斯),expresivo
+minimalist-monochrome,Minimalist Monochrome,minimalista
+modern-dark-cinema-mobile,Modern Dark (Cinema Mobile),ios
+saas-mobile-high-tech-boutique,SaaS Mobile (High-Tech Boutique),ios
+terminal-cli-mobile,Terminal CLI (Mobile),oscuro-tecnologico
+kinetic-brutalism-mobile,Kinetic Brutalism (Mobile),brutalista
+flat-design-mobile-touch-first,Flat Design Mobile (Touch-First),minimalista
+material-you-md3-mobile,Material 3 Expressive (Mobile),expresivo
+neo-brutalism-mobile,Neo Brutalism (Mobile),neo-brutalista
+bold-typography-mobile-poster,Bold Typography (Mobile Poster),editorial
+academia-scholarly-mobile,Academia (Scholarly Mobile),
+cyberpunk-mobile-hud,Cyberpunk Mobile HUD,oscuro-tecnologico
+bitcoin-defi-mobile,Bitcoin DeFi (Mobile),institucional
+claymorphism-mobile,Claymorphism (Mobile),suave-premium
+enterprise-saas-mobile,Enterprise SaaS (Mobile),institucional
+sketch-hand-drawn-mobile,Sketch Hand-Drawn (Mobile),organico
+neumorphism-mobile,Neumorphism (Mobile),suave-premium
+fluent-2,Fluent 2,suave-premium
+shopify-polaris,Shopify Polaris,panel-de-datos
+spectrum-design-system,Adobe Spectrum,institucional
+spectrum-2,Spectrum 2,expresivo

@@ -1,5 +1,5 @@
 ---
-description: Audit an app that already exists against its DESIGN.md and push variance into it, without breaking behaviour; rescues projects that look like every other Kiro app
+description: Audit an app that already exists against its DESIGN.md and uupm's UX floor, and push variance into it without breaking behaviour; with the argument `auditoría` it only reports, changing nothing
 ---
 
 # Rediseño de una app existente
@@ -7,6 +7,14 @@ description: Audit an app that already exists against its DESIGN.md and push var
 Para un proyecto que ya tiene páginas y se parece a todos los demás (mismo gris,
 misma cabecera, "tres tarjetas"), o que se construyó antes del motor de diseño.
 El objetivo es **cambiar cómo se ve sin cambiar lo que hace**.
+
+## Modo auditoría
+
+Con el argumento `auditoría` haces **solo el punto 1** (el diagnóstico completo) y entregas
+el informe: nada se cambia, no hay plan que aprobar. Es la auditoría de UX de toda la app, la
+que cubre cada ruta y no solo las que cambiaron. El informe se ordena como el de
+`/kiro-design-review`: por la prioridad de uupm, con el id de la regla, ✗, ! o ✓, la
+evidencia y dónde se arregla.
 
 ## Regla de oro
 
@@ -23,7 +31,9 @@ y al terminar. No se cambian rutas, modelos, formularios, el token CSRF
    - Si `DESIGN.md` tiene `TODO`, o `make design-check` dice que `design.toml`
      está en los valores por defecto, **no hay identidad**: corre primero la
      parte de identidad de `/kiro-init` (punto 2) y no sigas hasta tenerla.
-3. `make design-check` y apunta cada error y aviso.
+3. `make design-check` y apunta cada error y aviso (incluidos los patrones genéricos
+   `P1`-`P10` y las skills de diseño rivales `D6`). Para el producto de `PROJECT.md`, pide
+   a uupm su guía: `make design-ux q="<el producto>" domain=ux`.
 4. Haz el inventario de las páginas (`app/templates/pages/**`, las rutas de
    `app/routers/`) y ordénalas por importancia: portada y las que más ve la gente
    primero.
@@ -31,18 +41,22 @@ y al terminar. No se cambian rutas, modelos, formularios, el token CSRF
    (tipografía, color, layout, estados, contenido), leída con las reglas de
    `SKILL.md` por encima cuando discrepen (sin CDN, sin imágenes externas, sin
    JS por página).
-6. Y estas comprobaciones propias de Kiro:
+6. **`make archcheck`.** Lo que antes eran `grep` a mano son reglas con
+   número: páginas que extienden `base.html` y partials que extienden (J1),
+   formularios POST sin CSRF (J2), colores escritos a mano (J3), clases de Basecoat
+   que ya no existen (J4), scripts en línea y recursos externos (J5), más las de
+   capas (K1-K8). Cada violación dice archivo, línea y cómo arreglarla. Anótalas
+   como parte del inventario; una excepción con motivo (`kiro: allow`) se respeta.
+7. Y estas, que una máquina no puede ver:
 
    | Busca | Cómo |
    |---|---|
-   | Páginas que extienden `base.html` directamente | `grep -rn 'extends "base.html"' app/templates`: deben usar `layouts/app.html` o `layouts/landing.html` |
-   | Colores escritos a mano | `grep -rnE '#[0-9a-fA-F]{3,8}\b\|rgb\(\|(bg\|text\|border)-\[#' app/templates` (fuera de `emails/` y `basecoat/`) |
    | Cabecera reescrita que perdió la sesión | que `partials/header.html` siga incluyendo `headers/…` y que ninguna cabecera repita el formulario de logout a mano |
-   | Fuentes por CDN o `@import` externo | `grep -rn 'fonts.googleapis\|fonts.gstatic\|cdn\.' app/templates app/static/css/input.css` |
+   | Fuentes por CDN o `@import` externo | `grep -rn 'fonts.googleapis\|fonts.gstatic\|cdn\.' app/static/css/input.css` (las plantillas ya las cubre J5) |
    | Portada con la forma del ejemplo viejo | titular + badge + rejilla de tarjetas iguales |
    | Misma estructura en todas las secciones | tres bloques imagen+texto seguidos, tres rejillas iguales |
    | Estados que faltan | listas sin vacío, formularios sin error, fetch sin carga |
-   | Animación suelta | `<script>` en plantillas de página, `@keyframes` propios, `style="animation…"` |
+   | Animación suelta | `@keyframes` propios, `style="animation…"` (los `<script>` en línea ya los cubre J5) |
 
 ## 2. Propón
 

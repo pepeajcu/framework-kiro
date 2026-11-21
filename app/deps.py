@@ -21,8 +21,8 @@ from app.models.user import User
 from app.security import SESSION_COOKIE_NAME, unsign_session_token
 from app.services.auth import AuthService
 
-DbSession = Annotated[Session, Depends(get_db)]
-"""Request-scoped database session."""
+DbSession = Annotated[Session, Depends(get_db, scope="function")]
+"""Request-scoped database session, committed before the response is sent."""
 
 AppSettings = Annotated[Settings, Depends(get_settings)]
 """Application configuration."""

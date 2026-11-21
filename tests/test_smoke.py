@@ -7,7 +7,21 @@ missing asset before it reaches a page anyone cares about.
 
 from __future__ import annotations
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from uvicorn.importer import import_from_string
+
+
+def test_the_asgi_entrypoint_resolves_the_way_uvicorn_resolves_it() -> None:
+    """`uvicorn app.main:app` (`make dev`, the Dockerfile) needs `app` at module level.
+
+    Every other test builds its own app with `create_app()`, so nothing else
+    would notice the name disappearing: the suite stays green and the container
+    does not start. This uses uvicorn's own importer, which is what fails.
+    """
+    application = import_from_string("app.main:app")
+
+    assert isinstance(application, FastAPI)
 
 
 def test_health_reports_ok(client: TestClient) -> None:

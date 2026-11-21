@@ -1,0 +1,13 @@
+{# Arquetipo ios-bar: la barra de navegación de iOS. Material translúcido pegado
+   arriba (solo ahí: un material va en la capa de navegación, nunca sobre contenido que
+   se desplaza), 48 px de alto y un filete debajo. Pertenece al kit `ios`
+   (`[structure] kit = "ios"`): las clases `ios-bar` y `material-regular` las compila
+   ese kit. Conserva brand_mark.html y nav_auth.html. #}
+<header class="ios-bar material-regular sticky top-0 z-40">
+  <nav aria-label="Principal" class="mx-auto flex h-12 w-full {{ page_width | default('max-w-5xl') }} items-center justify-between px-4">
+    {% include "partials/brand_mark.html" %}
+    <div class="flex items-center gap-2">
+      {% include "partials/nav_auth.html" %}
+    </div>
+  </nav>
+</header>

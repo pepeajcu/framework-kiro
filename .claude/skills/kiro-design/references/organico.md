@@ -14,7 +14,7 @@ Start from `make design-init preset=organico`; the preset writes this:
 [brand]
 primary   = "#4D7C0F"
 neutral   = "warm"   # pure | warm | cool | tinted
-surface   = "cream"   # light | cream | dark
+surface   = "cream"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "1.25rem"
 
@@ -31,7 +31,8 @@ theme = "maia"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 5   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "floating-pill"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "floating-pill"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 2   # 1 aireado ... 10 denso
 ```
 
 `maia` has pill buttons and generous radii; `radius = "1.25rem"` makes the

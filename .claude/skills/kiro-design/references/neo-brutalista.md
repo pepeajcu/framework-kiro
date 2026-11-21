@@ -15,7 +15,7 @@ Start from `make design-init preset=neo-brutalista`; the preset writes this:
 [brand]
 primary   = "#FACC15"
 neutral   = "pure"   # pure | warm | cool | tinted
-surface   = "light"   # light | cream | dark
+surface   = "light"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "0rem"
 
@@ -32,7 +32,8 @@ theme = "lyra"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 5   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "industrial-rule"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "industrial-rule"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 6   # 1 aireado ... 10 denso
 ```
 
 `lyra` removes every radius. The accent here is a flat yellow: it is a *fill*,

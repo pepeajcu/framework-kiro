@@ -35,11 +35,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import ValidationError
 
-from app.deps import CurrentUser, DbSession
+from app.deps import AppSettings, CurrentUser, DbSession
+from app.hypermedia import flash, toast_response
 from app.repositories.note import NoteRepository
-from app.schemas import form_errors
+from app.schemas import validate_form
 from app.schemas.note import NoteCreate
 from app.services.note import NoteService
 from app.templating import render
@@ -61,31 +61,36 @@ def create_note(
     request: Request,
     db: DbSession,
     user: CurrentUser,
+    settings: AppSettings,
     title: Annotated[str, Form()] = "",
     body: Annotated[str, Form()] = "",
 ) -> Response:
-    """Add a note. Plain post/redirect/get — this route needs no JavaScript."""
-    try:
-        form = NoteCreate(title=title, body=body)
-    except ValidationError as exc:
+    """Add a note. Plain post/redirect/get — this route needs no JavaScript.
+
+    `validate_form` returns the model or a `FormResult` that carries what was typed and
+    the errors, so a rejected form is the same page again with a 400 and nothing copied
+    by hand. On success the redirect leaves a flash message: the next page shows it once.
+    """
+    form = validate_form(NoteCreate, title=title, body=body)
+    if form.data is None:
         notes = NoteRepository(db).list_for_user(user.id)
         return render(
-            request,
-            "pages/notes/index.html",
-            {"notes": notes, "errors": form_errors(exc), "title": title, "body": body},
-            status_code=400,
+            request, "pages/notes/index.html", {"notes": notes, "form": form}, status_code=400
         )
 
-    NoteService(db).create_for_user(user, title=form.title, body=form.body)
-    return RedirectResponse("/notes", status_code=SEE_OTHER)
+    NoteService(db).create_for_user(user, title=form.data.title, body=form.data.body)
+    return flash(RedirectResponse("/notes", status_code=SEE_OTHER), settings, "Nota guardada")
 
 
 @router.delete("/notes/{note_id}", response_class=HTMLResponse)
-def delete_note(db: DbSession, user: CurrentUser, note_id: uuid.UUID) -> HTMLResponse:
+def delete_note(
+    request: Request, db: DbSession, user: CurrentUser, note_id: uuid.UUID
+) -> HTMLResponse:
     """Delete one of the account's own notes.
 
     HTMX-only: the button that calls this sends `hx-delete` and swaps its own
-    `<article>` for this empty response, which removes it from the page.
+    `<article>` for this response. The response is only a toast: the target is replaced
+    by nothing (it disappears) and the message is appended to the toaster.
     """
     NoteService(db).delete_owned(user, note_id)
-    return HTMLResponse("")
+    return toast_response(request, title="Nota eliminada", replace_target=True)

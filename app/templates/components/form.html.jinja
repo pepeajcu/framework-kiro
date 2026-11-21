@@ -5,20 +5,50 @@
   campos. Lo de basecoat/ es lo que se sobreescribe al actualizar el framework;
   esto no.
 
-  Uso:
-    {% from "components/form.html.jinja" import field, form_error %}
+  Con memoria: el handler llama a `validate_form(Modelo, campo=valor...)` y, si
+  falla, pinta la página otra vez con `{"form": resultado}`. Las macros leen de
+  `form` el valor que escribió la persona y el error de cada campo:
+
+    {% from "components/form.html.jinja" import field, textarea, select, checkbox, form_error %}
+    {% set form = form | default(none) %}
     <form method="post" action="/algo">
       {% include "components/csrf_field.html" %}
-      {{ form_error(errors) }}
-      {{ field("email", "Email", type="email", value=email, errors=errors) }}
+      {{ form_error(form) }}
+      {{ field("email", "Email", form=form, type="email") }}
+      {{ textarea("body", "Contenido", form=form, rows=6) }}
+      {{ select("pais", "País", [{"value": "es", "label": "España"}], form=form) }}
+      {{ checkbox("acepto", "Acepto las condiciones", form=form) }}
     </form>
+
+  Las contraseñas nunca vuelven al navegador (validate_form las deja fuera).
+  Todo lo que viene de la persona se escapa: Jinja trata también los `.jinja`.
 
   El token CSRF va aparte, como include: ver components/csrf_field.html.
 #}
 
+{# Valor y error de un campo: del `form` si lo hay; si no, de los argumentos sueltos
+   (`value=`, `errors=`), que se conservan por compatibilidad. #}
+{% macro _value(name, form, value) %}{{ form.values.get(name, "") if form else (value or "") }}{% endmacro %}
+{% macro _error(name, form, errors) %}{{ (form.errors if form else errors).get(name, "") }}{% endmacro %}
+
+{# Lo que comparten todos los controles: el aviso de error y la ayuda, y a qué
+   `aria-describedby` apuntan. aria-invalid y aria-describedby son lo que hace que un
+   lector de pantalla anuncie el error al llegar al campo, en vez de dejarlo mudo. #}
+{% macro _notes(name, error, help) %}
+  {% if error %}<p role="alert" id="{{ name }}-error" class="text-destructive text-sm">{{ error }}</p>{% endif %}
+  {% if help %}<p id="{{ name }}-help" class="text-muted-foreground text-sm">{{ help }}</p>{% endif %}
+{% endmacro %}
+
+{% macro _describedby(name, error, help) -%}
+  {%- set ids = [] -%}
+  {%- if error %}{% set _ = ids.append(name ~ "-error") %}{% endif -%}
+  {%- if help %}{% set _ = ids.append(name ~ "-help") %}{% endif -%}
+  {%- if ids %} aria-describedby="{{ ids | join(' ') }}"{% endif -%}
+{%- endmacro %}
+
 {% macro field(name, label, type="text", value="", errors={}, autocomplete=None,
-               required=True, autofocus=False, help=None) %}
-  {% set error = errors.get(name) %}
+               required=True, autofocus=False, help=None, form=None) %}
+  {% set error = _error(name, form, errors) | trim %}
   <div class="field" {% if error %}data-invalid="true"{% endif %}>
     <label class="label" for="{{ name }}">{{ label }}</label>
     <input
@@ -26,28 +56,80 @@
       type="{{ type }}"
       id="{{ name }}"
       name="{{ name }}"
-      value="{{ value or '' }}"
+      value="{{ _value(name, form, value) | trim if type != 'password' else '' }}"
       {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
       {% if required %}required{% endif %}
       {% if autofocus %}autofocus{% endif %}
-      {# aria-invalid y aria-describedby son lo que hace que un lector de
-         pantalla anuncie el error al llegar al campo, en vez de dejarlo mudo. #}
-      {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}
+      {% if error %}aria-invalid="true"{% endif %}{{ _describedby(name, error, help) }}
     >
-    {% if error %}
-      <p role="alert" id="{{ name }}-error" class="text-destructive text-sm">{{ error }}</p>
-    {% endif %}
-    {% if help %}
-      <p class="text-muted-foreground text-sm">{{ help }}</p>
-    {% endif %}
+    {{ _notes(name, error, help) }}
+  </div>
+{% endmacro %}
+
+{# Texto largo. Se llena con el valor escrito, escapado. #}
+{% macro textarea(name, label, value="", errors={}, required=True, autofocus=False,
+                  help=None, form=None, rows=5) %}
+  {% set error = _error(name, form, errors) | trim %}
+  <div class="field" {% if error %}data-invalid="true"{% endif %}>
+    <label class="label" for="{{ name }}">{{ label }}</label>
+    <textarea
+      class="textarea"
+      id="{{ name }}"
+      name="{{ name }}"
+      rows="{{ rows }}"
+      {% if required %}required{% endif %}
+      {% if autofocus %}autofocus{% endif %}
+      {% if error %}aria-invalid="true"{% endif %}{{ _describedby(name, error, help) }}
+    >{{ _value(name, form, value) | trim }}</textarea>
+    {{ _notes(name, error, help) }}
+  </div>
+{% endmacro %}
+
+{# Lista desplegable nativa. `options`: lista de {value, label}. #}
+{% macro select(name, label, options, value="", errors={}, required=True, help=None,
+                form=None, placeholder=None) %}
+  {% set error = _error(name, form, errors) | trim %}
+  {% set current = _value(name, form, value) | trim %}
+  <div class="field" {% if error %}data-invalid="true"{% endif %}>
+    <label class="label" for="{{ name }}">{{ label }}</label>
+    <select
+      class="select"
+      id="{{ name }}"
+      name="{{ name }}"
+      {% if required %}required{% endif %}
+      {% if error %}aria-invalid="true"{% endif %}{{ _describedby(name, error, help) }}
+    >
+      {% if placeholder %}<option value="" {% if not current %}selected{% endif %}>{{ placeholder }}</option>{% endif %}
+      {% for option in options %}
+        <option value="{{ option.value }}" {% if option.value == current %}selected{% endif %}>{{ option.label }}</option>
+      {% endfor %}
+    </select>
+    {{ _notes(name, error, help) }}
+  </div>
+{% endmacro %}
+
+{# Casilla. Una casilla desmarcada no se envía, así que "marcada" es que el campo llegó. #}
+{% macro checkbox(name, label, checked=False, errors={}, help=None, form=None, value="on") %}
+  {% set error = _error(name, form, errors) | trim %}
+  {% set is_checked = (form.values.get(name) == value) if (form and form.values) else checked %}
+  <div class="field" {% if error %}data-invalid="true"{% endif %}>
+    <label class="label gap-3">
+      <input class="input" type="checkbox" id="{{ name }}" name="{{ name }}" value="{{ value }}"
+             {% if is_checked %}checked{% endif %}
+             {% if error %}aria-invalid="true"{% endif %}{{ _describedby(name, error, help) }}>
+      {{ label }}
+    </label>
+    {{ _notes(name, error, help) }}
   </div>
 {% endmacro %}
 
 {#
   Error que no pertenece a ningún campo: credenciales incorrectas, contraseñas
-  que no coinciden. El servicio los agrupa bajo la clave "__all__".
+  que no coinciden. Va bajo la clave "__all__". Acepta el `form` o, por
+  compatibilidad, el diccionario de errores.
 #}
-{% macro form_error(errors) %}
+{% macro form_error(source) %}
+  {% set errors = (source.errors if source.errors is defined else source) if source else {} %}
   {% if errors and errors.get("__all__") %}
     <div class="alert border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
          role="alert">

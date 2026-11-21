@@ -16,10 +16,14 @@ resuelve que la IA no invente el dominio; faltaba lo equivalente para la marca.
    logo. Lo rellena `/kiro-init` en una entrevista y la IA lo lee antes de tocar
    una plantilla.
 2. **El método es [taste-skill](https://github.com/Leonxlnx/taste-skill)** (MIT),
-   adaptado en `.claude/skills/kiro-design/`. Se vendorizan tres de sus skills
-   (`minimalist`, `soft`, `brutalist`) con su licencia; el resto se resume
-   adaptado a nuestro stack, porque el original asume React, GSAP y fuentes de
-   CDN.
+   adaptado en `.claude/skills/kiro-design/`. Se vendorizan cinco de sus skills
+   (`minimalist`, `soft`, `brutalist`, `redesign`, `brandkit`) con su licencia; el
+   resto se resume adaptado a nuestro stack, porque el original asume React, GSAP y
+   fuentes de CDN. *(Eran tres al escribirse esto; son cinco desde la 1.2.)*
+   **Se sigue el método con diales (v1), fijado por commit.** taste-skill publicó
+   una v2 el 2026-10-13, sin diales, que exige Node 22 y prohíbe cosas en las que
+   varios estilos de Kiro se apoyan; no se adopta. Ver
+   `.claude/skills/kiro-design/references/NOTICE.md`.
 3. **La identidad vive en tokens, no en plantillas.** `make brand-colors` deriva
    `--primary`, `--primary-foreground` y `--ring` (claro y oscuro) de un hex y
    los escribe en un bloque delimitado de `input.css`. El color del texto del

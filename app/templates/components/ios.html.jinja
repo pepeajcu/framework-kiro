@@ -1,0 +1,108 @@
+{#
+  Componentes del kit iOS (`[structure] kit = "ios"`).
+
+  Viven en components/ porque son TUYOS: edítalos. Las clases (`ios-*`, `material-*`)
+  las compila el kit en input.css; sin el kit se ven sin estilo. Todo es HTML que
+  funciona sin JavaScript. Texto y atributos pasan por el escapado de Jinja: es seguro
+  pasar datos del usuario. Lo único marcado como HTML (`| safe`) es `icon`, que es
+  código tuyo (un <svg>), nunca texto de un visitante.
+
+  Uso:
+    {% from "components/ios.html.jinja" import large_title, grouped_list, list_row,
+                                               segmented, tab_bar, sheet, sheet_trigger %}
+
+    {{ large_title("Ajustes") }}
+    {% call grouped_list(header="General", footer="Se aplica a toda la cuenta.") %}
+      {{ list_row("Perfil", detail="Ana", href="/perfil", chevron=True) }}
+      {{ list_row("Cerrar sesión", destructive=True) }}
+    {% endcall %}
+#}
+
+{# El título grande de una pantalla (34 px). Un solo <h1> por página. #}
+{% macro large_title(title, subtitle=None) %}
+<header class="ios-page pt-4 pb-2">
+  <h1 class="ios-large-title">{{ title }}</h1>
+  {% if subtitle %}<p class="ios-secondary ios-callout mt-1">{{ subtitle }}</p>{% endif %}
+</header>
+{% endmacro %}
+
+{# Un grupo de filas, como en Ajustes. El contenido son `list_row`. #}
+{% macro grouped_list(header=None, footer=None) %}
+<section class="ios-group ios-page">
+  {% if header %}<h2 class="ios-group-header">{{ header }}</h2>{% endif %}
+  <ul class="ios-list" role="list">{{ caller() }}</ul>
+  {% if footer %}<p class="ios-group-footer">{{ footer }}</p>{% endif %}
+</section>
+{% endmacro %}
+
+{# Una fila. Con `href` es un enlace; sin él, una fila estática. Con un bloque `call`,
+   el contenido va a la derecha (un interruptor, un valor). #}
+{% macro list_row(label, detail=None, href=None, chevron=False, destructive=False, icon=None) %}
+<li>
+  {% if href %}<a class="ios-row" href="{{ href }}"{% if destructive %} data-destructive{% endif %}>
+  {% else %}<div class="ios-row"{% if destructive %} data-destructive{% endif %}>{% endif %}
+    {% if icon %}{{ icon | safe }}{% endif %}
+    <span class="ios-row-label">{{ label }}</span>
+    {% if detail %}<span class="ios-row-detail">{{ detail }}</span>{% endif %}
+    {% if caller %}{{ caller() }}{% endif %}
+    {% if chevron %}
+      <svg class="ios-row-chevron" viewBox="0 0 8 14" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m1 1 6 6-6 6"/>
+      </svg>
+    {% endif %}
+  {% if href %}</a>{% else %}</div>{% endif %}
+</li>
+{% endmacro %}
+
+{# Control segmentado: un grupo de radios con nombre accesible. `options` es una lista
+   de {value, label}. `attrs` (opcional) se aplica a cada radio: p. ej.
+   {"hx-get": "/lista", "hx-target": "#resultado"} para filtrar sin recargar. #}
+{% macro segmented(name, label, options, selected=None, attrs={}) %}
+<fieldset class="ios-segmented">
+  <legend class="sr-only">{{ label }}</legend>
+  {% for option in options %}
+  <label>
+    <input type="radio" name="{{ name }}" value="{{ option.value }}"
+           {% if option.value == selected %}checked{% endif %}
+           {% for key, value in attrs.items() %}{{ key }}="{{ value }}" {% endfor %}>
+    <span>{{ option.label }}</span>
+  </label>
+  {% endfor %}
+</fieldset>
+{% endmacro %}
+
+{# Barra de pestañas (solo en móvil). `items`: lista de {href, label, icon}, donde
+   `icon` es un <svg> tuyo. `current` es la ruta activa. Reserva su alto en el <body>. #}
+{% macro tab_bar(items, current) %}
+<nav class="ios-tabbar material-regular" aria-label="Secciones">
+  {% for item in items %}
+  <a href="{{ item.href }}"{% if item.href == current %} aria-current="page"{% endif %}>
+    {% if item.icon %}{{ item.icon | safe }}{% endif %}
+    <span>{{ item.label }}</span>
+  </a>
+  {% endfor %}
+</nav>
+{% endmacro %}
+
+{# Hoja modal: un <dialog> nativo. Se abre con `sheet_trigger`; se cierra con el botón
+   (un formulario method="dialog": no necesita JavaScript propio), con Escape y pulsando
+   el fondo. El contenido es el bloque `call`. #}
+{% macro sheet(id, title) %}
+<dialog id="{{ id }}" class="ios-sheet" aria-labelledby="{{ id }}-title">
+  <div class="ios-page pb-6">
+    <div class="flex items-center justify-between gap-3 py-2">
+      <h2 id="{{ id }}-title" class="ios-headline">{{ title }}</h2>
+      <form method="dialog">
+        <button class="btn" data-variant="ghost" data-size="sm" type="submit">Cerrar</button>
+      </form>
+    </div>
+    {{ caller() }}
+  </div>
+</dialog>
+{% endmacro %}
+
+{% macro sheet_trigger(id, label, variant="primary") %}
+<button class="btn" data-variant="{{ variant }}" type="button"
+        onclick="document.getElementById('{{ id }}').showModal()">{{ label }}</button>
+{% endmacro %}

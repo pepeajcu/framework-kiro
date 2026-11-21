@@ -18,6 +18,9 @@ venv/
 # --- Kiro setup marker ---
 .kiro-setup-done
 
+# --- Design engine work area: proposals, backups, extracted references ---
+.design/
+
 # --- Tooling caches ---
 .pytest_cache/
 .mypy_cache/

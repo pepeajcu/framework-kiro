@@ -94,6 +94,18 @@ overwritten when Basecoat is updated. Instead:
   (`vega` `nova` `maia` `lyra` `mira` `luma` `sera` `rhea`). The skill
   `kiro-design` says what each one is.
 
+## Declarative local interactions (`kiro-ui.js`)
+
+When an interaction is purely local (toggling a panel, switching tabs, opening a
+dialog/drawer, copying text) and does not need a server round-trip (HTMX), use
+the `data-ui-*` attributes provided by `app/static/js/kiro-ui.js` (loaded by
+`base.html`). Never write inline `<script>` tags in a page (blocked by `J5`):
+
+- `data-ui-toggle="panel-id"` — toggles `hidden` on `#panel-id` and updates `aria-expanded`.
+- `data-ui-tabs` on a wrapper with `data-ui-tab="key"` buttons and `data-ui-panel="key"` sections (supports Left/Right arrow keys).
+- `data-ui-open="dialog-id"` and `data-ui-close` — opens/closes a `<dialog>` or `[data-ui-drawer]` element.
+- `data-ui-copy="#code-id"` (or literal text) — copies to clipboard and sets `data-copied="true"` briefly.
+
 ## After any template change
 
 ```bash

@@ -43,4 +43,4 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         return any(role.slug == slug for role in self.roles)
 
     def __repr__(self) -> str:
-        return f"<User {self.email}>"
+        return f"<User {self.id}>"

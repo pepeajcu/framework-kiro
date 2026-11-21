@@ -19,20 +19,32 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.branding import BrandError, parse_hex
+from app.design_engine.rules import check_allowed
 
 # The values the compiler understands. Kept as tuples so error messages, the
 # skill documentation and the tests all read from one place.
 THEMES = ("vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea")
 NEUTRALS = ("pure", "warm", "cool", "tinted")
-SURFACES = ("light", "cream", "dark")
-HEADERS = ("sticky-blur", "floating-pill", "industrial-rule", "terminal-bar", "custom")
-FALLBACKS = ("sans", "serif", "mono")
+SURFACES = ("light", "cream", "dark", "auto")
+HEADERS = (
+    "sticky-blur",
+    "floating-pill",
+    "industrial-rule",
+    "terminal-bar",
+    "ios-bar",
+    "custom",
+)
+FALLBACKS = ("sans", "serif", "mono", "system")
+KITS = ("none", "ios")
 
 Theme = Literal["vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea"]
 Neutral = Literal["pure", "warm", "cool", "tinted"]
-Surface = Literal["light", "cream", "dark"]
-Header = Literal["sticky-blur", "floating-pill", "industrial-rule", "terminal-bar", "custom"]
-Fallback = Literal["sans", "serif", "mono"]
+Surface = Literal["light", "cream", "dark", "auto"]
+Header = Literal[
+    "sticky-blur", "floating-pill", "industrial-rule", "terminal-bar", "ios-bar", "custom"
+]
+Fallback = Literal["sans", "serif", "mono", "system"]
+Kit = Literal["none", "ios"]
 
 CONTRACT_FILE = "design.toml"
 DEFAULT_PRIMARY = "#171717"
@@ -54,6 +66,11 @@ def _normalise_hex(value: object) -> str | None:
         raise ValueError("debe ser un color hex como '#0F766E'")
     r, g, b = (round(channel * 255) for channel in parse_hex(value))
     return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def normalise_hex(value: object) -> str | None:
+    """Public form of the colour normaliser, for briefs and importers."""
+    return _normalise_hex(value)
 
 
 class _Strict(BaseModel):
@@ -170,6 +187,30 @@ class Motion(_Strict):
 
 class Structure(_Strict):
     header: Header = "sticky-blur"
+    #: A platform kit: its own components, materials and type scale (`app.design_engine.kits`).
+    kit: Kit = "none"
+    #: VISUAL_DENSITY: 1 is a gallery, 10 a cockpit. Compiled to the rhythm (`rhythm.py`).
+    density: int = Field(default=5, ge=1, le=10)
+
+
+class Rules(_Strict):
+    """`[rules]`: design rules this project turns off on purpose.
+
+    Only taste can be allowed (see `app.design_engine.rules`); accessibility,
+    touch and performance are not negotiable. Allowing a rule is a decision, so
+    `design-check` reports it on every run instead of staying silent.
+    """
+
+    allow: tuple[str, ...] = ()
+
+    @field_validator("allow", mode="before")
+    @classmethod
+    def _check_allow(cls, value: object) -> tuple[str, ...]:
+        if not isinstance(value, list | tuple):
+            raise ValueError('debe ser una lista, ej. ["P1", "P2"]')
+        ids = tuple(sorted({str(item).strip().upper() for item in value}))
+        check_allowed(ids)
+        return ids
 
 
 class DesignContract(_Strict):
@@ -180,6 +221,7 @@ class DesignContract(_Strict):
     basecoat: Basecoat = Field(default_factory=Basecoat)
     motion: Motion = Field(default_factory=Motion)
     structure: Structure = Field(default_factory=Structure)
+    rules: Rules = Field(default_factory=Rules)
 
     @property
     def is_default(self) -> bool:
@@ -309,8 +351,23 @@ def dump_contract(contract: DesignContract) -> str:
         "",
         "[structure]",
         f"header = {_q(contract.structure.header)}   # {' | '.join(HEADERS)}",
-        "",
     ]
+    if contract.structure.kit != "none":
+        # Only written when used, like [rules]: most projects have no kit.
+        lines.append(f"kit    = {_q(contract.structure.kit)}   # {' | '.join(KITS)}")
+    if contract.structure.density != 5:
+        # Only written when it is not the middle: 1 airy (a gallery) ... 10 packed (a cockpit).
+        lines.append(f"density = {contract.structure.density}   # 1 aireado ... 10 denso")
+    lines.append("")
+    if contract.rules.allow:
+        # Only written when used: most projects never turn a rule off, and the
+        # file stays as short as the contract it describes.
+        allowed = ", ".join(_q(rule_id) for rule_id in contract.rules.allow)
+        lines += [
+            "[rules]",
+            f"allow = [{allowed}]   # reglas de gusto permitidas a propósito (ver DESIGN.md)",
+            "",
+        ]
     return "\n".join(lines)
 
 

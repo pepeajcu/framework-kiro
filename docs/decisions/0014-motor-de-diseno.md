@@ -101,12 +101,17 @@ verificación perceptual.
 
 ## Consecuencias
 
+*Actualizado por el [ADR-0020](0020-kit-ios-superficie-auto-y-fuente-del-sistema.md): la superficie admite
+`auto` (sigue al sistema), y el contrato gana `[structure] kit`.*
+
 - Archivos nuevos: `design.toml`, `app/design_engine/`, `app/routers/design.py`,
   `scripts/{design,font,motion,fetch}.py`, `layouts/`, `partials/headers/`. El
   `Dockerfile` copia `design.toml` a la imagen de producción.
 - El `design.toml` que se distribuye está en los valores por defecto, a propósito:
-  `make design-check` lo marca en rojo ("converge con cualquier otro Kiro"). No
-  forma parte de `make check`, para que el framework en sí no falle.
+  `make design-check` lo marca en rojo ("converge con cualquier otro Kiro").
+  *Actualizado por el [ADR-0016](0016-make-check-es-ci-y-reglas-comprobadas.md):*
+  `make check` ya lo corre, con `allow_defaults=1`, así que el framework en sí no
+  falla y un contrato roto sí.
 - Los atajos reescriben `design.toml` en formato canónico: un comentario propio
   dentro de ese archivo no sobrevive. La prosa va en `DESIGN.md`.
 - Un color de marca que no pase AA con el texto del botón ya no solo avisa: el

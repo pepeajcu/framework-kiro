@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import re
-import shutil
 from pathlib import Path
 
 import httpx2
@@ -22,7 +20,6 @@ from scripts.brand import set_colors
 from scripts.fetch import fetch_bytes
 
 from app.branding import BrandError
-from app.design_engine.blocks import remove_block
 from app.design_engine.checks import Finding, run_checks
 from app.design_engine.compiler import compile_contract
 from app.design_engine.contract import (
@@ -40,39 +37,6 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 # --- Fixtures ---------------------------------------------------------------
-
-
-def pristine_css(path: Path) -> str:
-    """The framework's `input.css` as it ships, whatever this project compiled into its own.
-
-    A configured project has `kiro:*` blocks in `input.css`; the tests need the
-    unconfigured starting point so that they do not depend on the project's identity.
-    """
-    css = path.read_text(encoding="utf-8")
-    css = remove_block(css, "brand")
-    css = remove_block(css, "fonts")
-    return re.sub(
-        r"/\* kiro:theme:start.*?kiro:theme:end \*/",
-        '@import "./vendor/basecoat/basecoat-vega.css";',
-        css,
-        flags=re.DOTALL,
-    )
-
-
-@pytest.fixture
-def project(tmp_path: Path) -> Paths:
-    """The slice of a Kiro project the engine reads, copied into a temp dir."""
-    paths = Paths(tmp_path)
-    (paths.static / "css" / "vendor" / "basecoat").mkdir(parents=True)
-    paths.css.write_text(pristine_css(REPO / "app/static/css/input.css"), encoding="utf-8")
-    for theme in ("vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea"):
-        (paths.basecoat / f"basecoat-{theme}.css").write_text("/* theme */")
-    shutil.copytree(REPO / "app/templates/partials/headers", paths.headers)
-    (paths.static / "js").mkdir(parents=True)
-    for name in ("motion.js", "motion-lib.js", "motion-gsap.js"):
-        shutil.copy(REPO / "app/static/js" / name, paths.static / "js" / name)
-    paths.contract.write_text(dump_contract(DesignContract()), encoding="utf-8")
-    return paths
 
 
 def fontsource(requests: list[str] | None = None) -> httpx2.Client:

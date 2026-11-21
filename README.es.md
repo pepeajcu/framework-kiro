@@ -105,7 +105,7 @@ de escribirlas:
 - Alembic con convención de nombres de constraints, para que las migraciones
   autogeneradas sean revisables.
 - Suite de tests con base de datos aislada y rollback por test.
-- `make check`: lint + tipos + tests + detección de migraciones pendientes.
+- `make check`: lint + tipos + css + contrato de diseño + reglas de arquitectura (`make archcheck`) + tests + detección de migraciones pendientes. Es lo que corre CI.
 - `make audit`: dependencias contra la base de datos de vulnerabilidades
   conocidas (`pip-audit`).
 - Un ejemplo real y completo del golden path (`app/routers/notes.py` y sus

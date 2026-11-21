@@ -8,23 +8,24 @@
   (hx-delete + hx-swap="outerHTML" sobre el propio <article>).
 #}
 {% extends "layouts/app.html" %}
-{% from "components/form.html.jinja" import field, form_error %}
+{% from "components/form.html.jinja" import field, textarea, form_error %}
+{% from "components/states.html.jinja" import empty %}
 
 {% block title %}Notas — {{ settings.app_name }}{% endblock %}
 {% block description %}Tus notas privadas.{% endblock %}
 
 {% block content %}
-{% set errors = errors | default({}) %}
+{% set form = form | default(none) %}
 
 <h1 class="text-3xl font-semibold tracking-tight">Notas</h1>
 <p class="text-muted-foreground mt-1">Solo tú puedes verlas y borrarlas.</p>
 
 <form method="post" action="/notes" class="mt-6 max-w-lg space-y-4">
   {% include "components/csrf_field.html" %}
-  {{ form_error(errors) }}
+  {{ form_error(form) }}
 
-  {{ field("title", "Título", value=title, errors=errors, autofocus=True) }}
-  {{ field("body", "Contenido", value=body, errors=errors) }}
+  {{ field("title", "Título", form=form, autofocus=True) }}
+  {{ textarea("body", "Contenido", form=form, rows=5) }}
 
   <button class="btn" data-variant="primary" type="submit">Guardar</button>
 </form>
@@ -52,7 +53,7 @@
       </section>
     </article>
   {% else %}
-    <p class="text-muted-foreground">Aún no tienes notas.</p>
+    {{ empty("Aún no tienes notas", "Escribe la primera en el formulario de arriba.") }}
   {% endfor %}
 </div>
 {% endblock %}

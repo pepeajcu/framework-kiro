@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.branding import apply_brand_block
+from app.design_engine.a11y import render_a11y_block
 from app.design_engine.blocks import (
     apply_block,
     apply_theme_block,
@@ -17,6 +18,7 @@ from app.design_engine.blocks import (
 )
 from app.design_engine.contract import DesignContract, DesignError
 from app.design_engine.fonts import FontFile, render_fonts_block_body, required_files
+from app.design_engine.kits import render_kit_block
 from app.design_engine.palette import (
     Palette,
     derive_palette,
@@ -24,6 +26,7 @@ from app.design_engine.palette import (
     render_palette_block,
     suggest_primary,
 )
+from app.design_engine.rhythm import render_rhythm_block
 
 
 @dataclass(frozen=True)
@@ -79,6 +82,14 @@ def compile_contract(contract: DesignContract, css: str) -> Compiled:
         if body is None
         else apply_block(out, "fonts", render_block("fonts", body))
     )
+
+    kit = render_kit_block(contract.structure.kit, palette)
+    out = remove_block(out, "kit") if kit is None else apply_block(out, "kit", kit)
+
+    out = apply_block(out, "rhythm", render_rhythm_block(contract.structure.density))
+
+    # The floor: the same for every project, whatever its contract says.
+    out = apply_block(out, "a11y", render_a11y_block())
 
     warnings = list(palette.warnings)
     for advisory in palette.advisories:

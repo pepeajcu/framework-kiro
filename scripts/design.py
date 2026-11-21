@@ -5,6 +5,8 @@
     make design init preset=brutalista [primary="#DC2626"]
     make design set brand.primary="#0F766E" brand.neutral=warm
     make design-check                  # is what the toml says what the project ships?
+    make design-propose from=brief.json [base=advisor.json] [name=spa]
+    make design-apply proposal=spa [force=1]
 
 The logic is in `app/design_engine/` (pure, typed, tested); this file is the I/O
 around it: reading and writing files, and downloading what is missing.
@@ -13,14 +15,31 @@ around it: reading and writing files, and downloading what is missing.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
+import json
+import re
+import shutil
+import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 import httpx2
 
 from app.branding import BrandError
+from app.design_engine.advisor import brief_from_design_system, load_overlay
+from app.design_engine.brief import (
+    DesignBrief,
+    Proposal,
+    decision_lines,
+    proposal_from_data,
+    proposal_to_data,
+    propose,
+    provenance_entry,
+    render_report,
+)
 from app.design_engine.checks import run_checks
 from app.design_engine.compiler import Compiled, compile_contract
 from app.design_engine.contract import (
@@ -30,6 +49,12 @@ from app.design_engine.contract import (
     contract_to_data,
     dump_contract,
     load_contract,
+)
+from app.design_engine.design_md import (
+    DECISIONS_HEADING,
+    PROVENANCE_HEADING,
+    add_lines,
+    read_dials,
 )
 from app.design_engine.fonts import MAX_FONT_BYTES, FontFile, validate_woff2
 from app.design_engine.motion import missing_files
@@ -198,9 +223,203 @@ def set_values(paths: Paths, assignments: list[str]) -> None:
             raise DesignError(
                 f"'{key}' no existe; claves de [{section}]: {', '.join(data[section])}"
             )
-        data[section][name] = int(value) if name == "level" and value.isdigit() else value
+        if name == "allow":
+            # `rules.allow=P1,P2` (an empty value clears the list)
+            data[section][name] = [item.strip() for item in value.split(",") if item.strip()]
+        else:
+            numeric = name in ("level", "density") and value.isdigit()
+            data[section][name] = int(value) if numeric else value
     updated = contract_from_data(data)
     write_atomically(paths.contract, dump_contract(updated))
+
+
+_SLUG = re.compile(r"[^a-z0-9]+")
+
+
+def _slug(text: str) -> str:
+    return _SLUG.sub("-", text.lower()).strip("-")[:48] or "propuesta"
+
+
+def _read_brief(path: Path) -> DesignBrief:
+    try:
+        return DesignBrief.model_validate_json(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise DesignError(f"no se puede leer {path}: {exc.strerror}") from exc
+    except ValueError as exc:
+        raise DesignError(f"{path} no es un brief válido:\n{exc}") from exc
+
+
+def make_proposal(
+    paths: Paths,
+    *,
+    source: Path | None,
+    base: Path | None,
+    name: str | None,
+    fonts: Path | None = None,
+    font_map: Mapping[str, str] | None = None,
+    today: dt.date | None = None,
+) -> tuple[str, Proposal]:
+    """Translate briefs into `.design/proposals/<name>.{json,toml,md}`. Writes nothing else."""
+    if source is None and base is None:
+        raise DesignError("falta un brief: `make design-propose from=brief.json`")
+    today = today or dt.datetime.now(tz=dt.UTC).date()
+    inspiration = _read_brief(source) if source else None
+    baseline = _read_brief(base) if base else None
+    table: dict[str, str] = dict(font_map or {})
+    if fonts is not None:
+        try:
+            table.update(json.loads(fonts.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as exc:
+            raise DesignError(f"no se puede leer la tabla de fuentes {fonts}: {exc}") from exc
+
+    current = load_contract(paths.contract)
+    proposal = propose(base=baseline, inspiration=inspiration, current=current, fonts=table)
+
+    chosen = inspiration or baseline
+    assert chosen is not None
+    slug = _slug(name or chosen.title or chosen.provenance)
+    paths.proposals.mkdir(parents=True, exist_ok=True)
+    write_atomically(
+        paths.proposals / f"{slug}.json",
+        json.dumps(proposal_to_data(proposal, today), indent=2, ensure_ascii=False) + "\n",
+    )
+    write_atomically(paths.proposals / f"{slug}.toml", dump_contract(proposal.contract))
+    write_atomically(paths.proposals / f"{slug}.md", render_report(proposal, current, today))
+    return slug, proposal
+
+
+# What the advisor runs: uupm's own `search.py`, vendored. `-I` keeps the working
+# directory and the user's site-packages out of its way; its own scripts folder is
+# added by hand because `-I` drops it too.
+_UUPM_RUNNER = (
+    "import runpy, sys\n"
+    "scripts = sys.argv[1]\n"
+    "sys.path.insert(0, scripts)\n"
+    "sys.argv = [scripts + '/search.py', *sys.argv[2:]]\n"
+    "runpy.run_path(scripts + '/search.py', run_name='__main__')\n"
+)
+UUPM_DOMAINS = ("product", "style", "color", "landing", "ux", "typography", "chart")
+
+
+def run_uupm(paths: Paths, args: list[str], *, timeout: float = 60.0) -> str:
+    """Run uupm's search with the given arguments and return what it printed."""
+    scripts = paths.uupm / "scripts"
+    if not (scripts / "search.py").is_file():
+        raise DesignError(
+            "falta el asesor uupm (.claude/skills/kiro-design/uupm/); "
+            "se trae con `uv run python -m scripts.vendor_uupm`"
+        )
+    command = [sys.executable, "-I", "-c", _UUPM_RUNNER, str(scripts), *args]
+    try:
+        # Our own vendored script, no shell, a fixed interpreter: nothing to inject into.
+        result = subprocess.run(  # noqa: S603
+            command, capture_output=True, text=True, timeout=timeout, check=False
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise DesignError(f"uupm tardó más de {timeout:g} s en responder") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["sin detalle"]
+        raise DesignError(f"uupm falló: {detail[0]}")
+    return result.stdout
+
+
+def advise(
+    paths: Paths, query: str, *, name: str | None, today: dt.date | None = None
+) -> tuple[str, Proposal]:
+    """Ask uupm for a design system for this product and turn it into a proposal.
+
+    uupm is the **base**: it says what a product of this kind needs. The proposal
+    is saved for review like any other; `make design-propose from=...
+    base=.design/briefs/<name>.json` dresses it with a style on top.
+    """
+    today = today or dt.datetime.now(tz=dt.UTC).date()
+    dials = (
+        read_dials(paths.design_md.read_text(encoding="utf-8")) if paths.design_md.is_file() else {}
+    )
+    arguments = [query, "--design-system", "--json", "-p", name or query]
+    for key, flag in (("variance", "--variance"), ("motion", "--motion"), ("density", "--density")):
+        if key in dials:
+            arguments += [flag, str(dials[key])]
+
+    raw = run_uupm(paths, arguments)
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise DesignError("uupm no devolvió JSON válido") from exc
+
+    advice = brief_from_design_system(data, load_overlay(paths.uupm_overlay), dials=dials)
+    slug = _slug(name or advice.brief.title or query)
+    for folder, payload in (
+        ("uupm", json.dumps(data, indent=2, ensure_ascii=False)),
+        ("briefs", advice.brief.model_dump_json(indent=2)),
+    ):
+        (paths.work / folder).mkdir(parents=True, exist_ok=True)
+        write_atomically(paths.work / folder / f"{slug}.json", payload + "\n")
+    return make_proposal(
+        paths,
+        source=None,
+        base=paths.work / "briefs" / f"{slug}.json",
+        name=slug,
+        font_map=advice.fonts,
+        today=today,
+    )
+
+
+def search_ux(paths: Paths, query: str, *, domain: str, stack: bool) -> str:
+    """uupm's plain search: UX guidelines, charts, landing patterns... as text."""
+    if domain not in UUPM_DOMAINS:
+        raise DesignError(f"dominio '{domain}' no válido; opciones: {', '.join(UUPM_DOMAINS)}")
+    arguments = [query, "--stack", "html-tailwind"] if stack else [query, "--domain", domain]
+    return run_uupm(paths, [*arguments, "--max-results", "5"])
+
+
+def apply_proposal(
+    paths: Paths,
+    slug: str,
+    *,
+    force: bool,
+    today: dt.date | None = None,
+    client: httpx2.Client | None = None,
+) -> BuildReport:
+    """Make a proposal the project's identity: design.toml, DESIGN.md, then a build.
+
+    A project that already has an identity of its own is never overwritten
+    without `force`, and a backup of what is replaced goes to `.design/backup/`.
+    """
+    today = today or dt.datetime.now(tz=dt.UTC).date()
+    source = paths.proposals / f"{slug}.json"
+    if not source.is_file():
+        existing = sorted(p.stem for p in paths.proposals.glob("*.json"))
+        listing = ", ".join(existing) if existing else "ninguna"
+        raise DesignError(f"no existe la propuesta '{slug}'; hay: {listing}")
+    try:
+        proposal = proposal_from_data(json.loads(source.read_text(encoding="utf-8")))
+    except ValueError as exc:
+        raise DesignError(f"{source.name} no es JSON válido: {exc}") from exc
+
+    current = load_contract(paths.contract)
+    if not current.is_default and current != proposal.contract and not force:
+        raise DesignError(
+            "design.toml ya tiene una identidad propia; usa force=1 para sustituirla "
+            "(se guarda una copia en .design/backup/)"
+        )
+
+    stamp = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d-%H%M%S")
+    backup = paths.work / "backup" / stamp
+    for original in (paths.contract, paths.design_md):
+        if original.is_file():
+            backup.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original, backup / original.name)
+
+    write_atomically(paths.contract, dump_contract(proposal.contract))
+    if paths.design_md.is_file():
+        text = paths.design_md.read_text(encoding="utf-8")
+        text = add_lines(text, DECISIONS_HEADING, decision_lines(proposal, today))
+        text = add_lines(text, PROVENANCE_HEADING, [provenance_entry(proposal, today)])
+        write_atomically(paths.design_md, text)
+    for item in proposal.unresolved:
+        print(f"sin resolver: {item}", file=sys.stderr)
+    return build(paths, client=client)
 
 
 def check(paths: Paths, *, allow_defaults: bool) -> int:
@@ -256,6 +475,31 @@ def main(argv: list[str] | None = None) -> int:
     set_parser = sub.add_parser("set", help="cambiar valores: seccion.clave=valor")
     set_parser.add_argument("assignments", nargs="+")
 
+    propose_parser = sub.add_parser("propose", help="traducir un brief a una propuesta de contrato")
+    propose_parser.add_argument(
+        "--from", dest="source", type=Path, help="brief de inspiración (JSON)"
+    )
+    propose_parser.add_argument("--base", type=Path, help="brief de base del producto (JSON)")
+    propose_parser.add_argument(
+        "--fonts", type=Path, help="tabla JSON nombre de fuente → Fontsource"
+    )
+    propose_parser.add_argument("--name", help="nombre de la propuesta")
+
+    apply_parser = sub.add_parser("apply", help="aplicar una propuesta guardada")
+    apply_parser.add_argument("proposal", help="nombre de la propuesta")
+    apply_parser.add_argument("--force", action="store_true", help="sustituir una identidad propia")
+
+    advise_parser = sub.add_parser("advise", help="pedir a uupm un sistema de diseño y proponerlo")
+    advise_parser.add_argument("query", help="el producto, ej. 'landing de un spa de lujo'")
+    advise_parser.add_argument("--name", help="nombre de la propuesta")
+
+    ux_parser = sub.add_parser("ux", help="consultar a uupm una guía (ux, chart, landing...)")
+    ux_parser.add_argument("query")
+    ux_parser.add_argument("--domain", default="ux", choices=UUPM_DOMAINS)
+    ux_parser.add_argument("--stack", action="store_true", help="guías de html-tailwind")
+
+    sub.add_parser("schema", help="imprimir el esquema JSON de un brief")
+
     check_parser = sub.add_parser("check", help="validar el contrato contra el proyecto")
     check_parser.add_argument("--allow-defaults", action="store_true")
 
@@ -272,6 +516,36 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "set":
             set_values(paths, args.assignments)
             print_report(build(paths), paths)
+        elif args.command == "propose":
+            slug, proposal = make_proposal(
+                paths, source=args.source, base=args.base, name=args.name, fonts=args.fonts
+            )
+            print(f"propuesta '{slug}' guardada en {paths.proposals.relative_to(paths.root)}/")
+            for decision in proposal.decisions:
+                print(
+                    f"  {decision.field}: {decision.before} → {decision.after} ({decision.reason})"
+                )
+            for item in proposal.unresolved:
+                print(f"  sin resolver: {item}", file=sys.stderr)
+            print(f"revísala y aplícala con `make design-apply proposal={slug}`")
+        elif args.command == "schema":
+            print(json.dumps(DesignBrief.model_json_schema(), indent=2, ensure_ascii=False))
+        elif args.command == "advise":
+            slug, proposal = advise(paths, args.query, name=args.name)
+            print(f"uupm propone para '{args.query}'; guardado como '{slug}'")
+            for decision in proposal.decisions:
+                print(
+                    f"  {decision.field}: {decision.before} → {decision.after} ({decision.reason})"
+                )
+            for note in proposal.ux_notes:
+                print(f"  ux: {note}")
+            review = f".design/proposals/{slug}.md"
+            print(f"revisa {review} y aplica con `make design-apply proposal={slug}`")
+        elif args.command == "ux":
+            print(search_ux(paths, args.query, domain=args.domain, stack=args.stack))
+        elif args.command == "apply":
+            print_report(apply_proposal(paths, args.proposal, force=args.force), paths)
+            return check(paths, allow_defaults=False)
         else:
             return check(paths, allow_defaults=args.allow_defaults)
     except BrandError as exc:

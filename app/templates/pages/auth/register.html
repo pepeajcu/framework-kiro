@@ -8,17 +8,17 @@
 {% block subheading %}Solo hacen falta un email y una contraseña.{% endblock %}
 
 {% block form_content %}
-{# `errors` solo llega cuando la validación ha fallado. #}
-{% set errors = errors | default({}) %}
+{# `form` solo llega cuando la validación ha fallado (validate_form): lleva lo escrito y los errores. #}
+{% set form = form | default(none) %}
 <form method="post" action="/register" class="space-y-4">
   {% include "components/csrf_field.html" %}
-  {{ form_error(errors) }}
+  {{ form_error(form) }}
 
-  {{ field("full_name", "Nombre", value=full_name, errors=errors,
+  {{ field("full_name", "Nombre", form=form,
            autocomplete="name", required=False, autofocus=True) }}
-  {{ field("email", "Email", type="email", value=email, errors=errors,
+  {{ field("email", "Email", type="email", form=form,
            autocomplete="username") }}
-  {{ field("password", "Contraseña", type="password", errors=errors,
+  {{ field("password", "Contraseña", type="password", form=form,
            autocomplete="new-password",
            help="Mínimo " ~ settings.password_min_length ~ " caracteres.") }}
 

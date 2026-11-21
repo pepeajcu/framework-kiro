@@ -37,6 +37,10 @@ _FALLBACKS = {
         "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "
         "'Liberation Mono', 'Courier New', monospace"
     ),
+    # Not a fallback but a preference: the platform's own font first (San Francisco
+    # on Apple devices, which Apple does not let a site self-host), the local one
+    # after it for everyone else. Used by `font_family`, never after the name.
+    "system": "-apple-system, BlinkMacSystemFont, sans-serif",
 }
 _DEFAULT_FALLBACK = {"display": "sans", "body": "sans", "mono": "mono"}
 
@@ -102,7 +106,24 @@ def validate_woff2(data: bytes, *, label: str) -> None:
 def fallback_stack(role: str, face: FontFace) -> str:
     """The generic fallback that follows the family name in `font-family`."""
     kind = face.fallback or _DEFAULT_FALLBACK[role]
+    if kind == "system":
+        return _FALLBACKS["sans"]
     return _FALLBACKS[kind]
+
+
+def font_family(role: str, face: FontFace) -> str:
+    """The whole `font-family` value for a declared face.
+
+    With `fallback = "system"` the platform font comes **first** and the local one
+    second, so Apple devices render San Francisco and download nothing, while every
+    other device gets the local woff2. `system-ui` is deliberately not in the list:
+    it would win on Windows and Android and the local font would never be used.
+    """
+    if face.fallback == "system":
+        system = _FALLBACKS["system"]
+        head, _, tail = system.rpartition(", ")
+        return f'{head}, "{face.name}", {tail}'
+    return f'"{face.name}", {fallback_stack(role, face)}'
 
 
 def _font_face_rule(file: FontFile) -> str:
@@ -128,9 +149,7 @@ def render_fonts_block_body(typography: Typography) -> str | None:
         return None
 
     parts = [_font_face_rule(file) for file in required_files(typography)]
-    tokens = [
-        f'  {_TOKEN[role]}: "{face.name}", {fallback_stack(role, face)};' for role, face in faces
-    ]
+    tokens = [f"  {_TOKEN[role]}: {font_family(role, face)};" for role, face in faces]
     parts.append("@theme {\n" + "\n".join(tokens) + "\n}")
     if typography.display is not None:
         # Titles take the display face without every heading having to ask for

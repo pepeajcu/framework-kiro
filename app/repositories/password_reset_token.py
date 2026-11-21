@@ -27,6 +27,29 @@ class PasswordResetTokenRepository(BaseRepository[PasswordResetToken]):
         token.used_at = dt.datetime.now(tz=dt.UTC)
         self.session.flush()
 
+    def consume_by_token(self, token: str) -> PasswordResetToken | None:
+        """Atomically spend an unspent, unexpired reset token and return it.
+
+        Uses `UPDATE ... WHERE used_at IS NULL AND expires_at > now RETURNING id`
+        so two concurrent requests with the same link cannot both succeed.
+        """
+        now = dt.datetime.now(tz=dt.UTC)
+        stmt = (
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.token_hash == hash_token(token),
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > now,
+            )
+            .values(used_at=now)
+            .returning(PasswordResetToken.id)
+        )
+        spent_id = self.session.scalars(stmt).one_or_none()
+        if spent_id is None:
+            return None
+        self.session.flush()
+        return self.get(spent_id)
+
     def invalidate_all_for_user(self, user_id: uuid.UUID) -> int:
         """Spend every outstanding token of a user.
 

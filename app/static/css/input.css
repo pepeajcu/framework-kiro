@@ -22,6 +22,86 @@
 @source "../../templates";
 @source "../../../app/**/*.py";
 
+/* kiro:rhythm:start — generado por `make design build`; no editar a mano */
+/* Ritmo vertical: sale de [structure] density (ver app/design_engine/rhythm.py). */
+:root {
+  --kiro-section-y: 5rem;
+  --kiro-gap: 1.5rem;
+  --kiro-row-h: 2.5rem;
+}
+@media (max-width: 767px) {
+  :root { --kiro-section-y: 3.25rem; }
+}
+@media (pointer: coarse) {
+  :root { --kiro-row-h: 2.75rem; }
+}
+@utility section-y {
+  padding-block: var(--kiro-section-y);
+}
+@utility gap-rhythm {
+  gap: var(--kiro-gap);
+}
+@utility min-h-row {
+  min-height: var(--kiro-row-h);
+}
+/* kiro:rhythm:end */
+
+/* kiro:a11y:start — generado por `make design build`; no editar a mano */
+/* Suelo de accesibilidad: no depende del contrato (ver app/design_engine/a11y.py). */
+@media (pointer: coarse) {
+  .btn {
+    position: relative;
+  }
+  /* Un dedo necesita 44 px. El botón no cambia: se amplía su zona de pulsación. */
+  .btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  :where(
+      input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"]),
+      select,
+      textarea
+    ) {
+    min-height: 44px;
+  }
+  :where(label:has(> input[type="checkbox"], > input[type="radio"])) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Foco visible de respaldo: especificidad cero, así que el anillo de un componente prevalece. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-contrast: more) {
+  :root:root,
+  .dark.dark {
+    --border: color-mix(in oklab, var(--foreground) 55%, var(--background));
+    --input: color-mix(in oklab, var(--foreground) 55%, var(--background));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* kiro:a11y:end */
+
 /* ---------------------------------------------------------------------------
  * Personalización del proyecto
  *

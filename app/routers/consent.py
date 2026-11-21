@@ -13,13 +13,17 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Form, Response
 from fastapi.responses import HTMLResponse
 
+from app.deps import AppSettings
 from app.services.consent import CONSENT_COOKIE, CONSENT_COOKIE_MAX_AGE
 
 router = APIRouter(tags=["consent"], include_in_schema=False)
 
 
 @router.post("/consent", response_class=HTMLResponse)
-def set_consent(decision: Annotated[Literal["accepted", "rejected"], Form()]) -> Response:
+def set_consent(
+    decision: Annotated[Literal["accepted", "rejected"], Form()],
+    settings: AppSettings,
+) -> Response:
     """Record the visitor's choice and make the banner disappear.
 
     Empty body with `hx-swap="outerHTML"` on the banner itself: HTMX replaces
@@ -31,6 +35,7 @@ def set_consent(decision: Annotated[Literal["accepted", "rejected"], Form()]) ->
         CONSENT_COOKIE,
         decision,
         max_age=CONSENT_COOKIE_MAX_AGE,
+        secure=settings.is_production,
         samesite="lax",
         path="/",
     )

@@ -13,6 +13,10 @@ different, because the type, colour, radius and signature differ.
 
 **Rules for every snippet below**
 
+- A section's vertical padding is `section-y` (and a grid's gap can be `gap-rhythm`): they
+  come from `[structure] density`, so the same archetype is airy in a gallery and tight in a
+  cockpit. Do not write `py-16` for a section.
+
 - Tokens only (`bg-primary`, `text-muted-foreground`, `border-border`); never a hex.
 - Every multi-column layout names its `< 768px` fallback in the same element.
 - The hero fits the first viewport (`min-h-[100dvh]` at most, never `h-screen`).
@@ -36,7 +40,7 @@ When: most products with something to show. `DESIGN_VARIANCE` 4+.
 Never 50/50: give the text 7 columns and the visual 5, or the reverse.
 
 ```html
-<section class="py-16 sm:py-24">
+<section class="section-y">
   <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 lg:grid-cols-12">
     <div class="lg:col-span-7">
       <h1 class="text-5xl leading-[1.02] tracking-tight text-balance sm:text-7xl" data-motion="split-reveal">
@@ -91,7 +95,7 @@ When: a product with several equal-weight facts. `DESIGN_DENSITY` 4+. Tiles must
 differ in size *and* in content type (a number, a quote, a visual, a list).
 
 ```html
-<section class="py-16 sm:py-24">
+<section class="section-y">
   <div class="mx-auto max-w-6xl px-4">
     <h1 class="max-w-3xl text-4xl tracking-tight text-balance sm:text-6xl">Titular</h1>
     <div class="mt-10 grid auto-rows-[10rem] gap-3 sm:grid-cols-2 lg:grid-cols-6" data-motion="stagger" data-motion-delay="0.07">
@@ -113,7 +117,7 @@ When: content-first sites, publications, long-form. `DESIGN_VARIANCE` 3-6.
 Serif display, generous measure, hairline rules.
 
 ```html
-<header class="py-16 sm:py-24">
+<header class="section-y">
   <div class="mx-auto max-w-3xl px-4">
     <p class="text-muted-foreground font-mono text-xs tracking-widest uppercase">Número 04 · Octubre</p>
     <h1 class="mt-4 text-5xl leading-[1.05] tracking-tight text-balance sm:text-7xl">Un titular que se lee como una portada</h1>
@@ -151,7 +155,7 @@ let it wrap). It pauses on hover and stops entirely under reduced motion.
 When: a process in three or four steps. Pure CSS: it needs no motion level.
 
 ```html
-<section class="py-16">
+<section class="section-y">
   <div class="mx-auto max-w-4xl px-4">
     <div class="bg-card border-border sticky top-24 mb-4 rounded-xl border p-8">
       <p class="text-muted-foreground font-mono text-sm">01</p><h2 class="mt-2 text-3xl">Primer paso</h2>
@@ -211,7 +215,7 @@ choice.
 The replacement for "three cards in a row". Rules, not boxes.
 
 ```html
-<section class="py-16">
+<section class="section-y">
   <div class="mx-auto max-w-6xl px-4">
     <ol class="divide-border border-border divide-y border-y" data-motion="stagger">
       <li class="grid gap-2 py-6 sm:grid-cols-[6rem_1fr_1.5fr] sm:gap-8">
@@ -236,7 +240,7 @@ Mobile: the grid collapses to a stack (`sm:` only adds columns).
 For products with real specifications, rates, hours, ingredients.
 
 ```html
-<section class="py-16">
+<section class="section-y">
   <div class="mx-auto max-w-4xl px-4">
     <dl class="divide-border border-border divide-y border-y">
       <div class="grid gap-1 py-4 sm:grid-cols-[14rem_1fr]">
@@ -271,7 +275,7 @@ surface (`/_design` shows it).
 ### 2.5 `faq`: details and summary, no JS
 
 ```html
-<section class="py-16">
+<section class="section-y">
   <div class="mx-auto max-w-3xl px-4">
     <div class="accordion">
       <details><summary>Una pregunta real</summary><p>Su respuesta.</p></details>

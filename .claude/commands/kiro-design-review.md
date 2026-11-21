@@ -1,13 +1,22 @@
 ---
-description: Review a page you just built against DESIGN.md and the anti-slop rules by looking at it (screenshots at 375 and 1280 px), asking "does it look like the default template?", and fixing it in at most two passes
+description: Review a page you just built against DESIGN.md, uupm's UX guidance and the anti-slop rules by looking at it (screenshots at 375, 768, 1024 and 1440 px), one report ordered by priority, fixing in at most two passes unless the floor fails
 ---
 
 # Revisión de diseño
 
 Corre esto después de construir o cambiar una página. No se puede juzgar un
 diseño que no se ha visto: aquí lo ves, lo comparas con lo que el proyecto dijo
-que quería, y lo corriges. **Máximo dos pasadas**: si tras la segunda quedan
-cosas, las reportas en vez de dar vueltas.
+que quería y con lo que la guía de UX exige, y lo corriges.
+
+**Cómo se cierra.** Hay dos clases de hallazgo y no se tratan igual:
+
+- **El suelo** (accesibilidad, uso táctil, rendimiento y las leyes del stack: categorías
+  1 a 3 de `references/constitution.md`). Un ✗ aquí **bloquea** y no tiene límite de
+  pasadas: no se da por terminada la tarea con el suelo roto. Casi todo está ya en
+  `make check`.
+- **El gusto** (estilo, composición, tipografía, movimiento, navegación). **Máximo dos
+  pasadas**; lo que siga ✗ después se te escala al usuario con opciones. Lo que decida
+  se anota en `DESIGN.md`, en *Decisiones de diseño*, para no volver a preguntarlo.
 
 Argumento opcional: las rutas a revisar (`/`, `/notes`…). Sin argumento, las
 páginas cuyas plantillas cambiaron (`git diff --name-only -- app/templates`) más
@@ -17,9 +26,9 @@ páginas cuyas plantillas cambiaron (`git diff --name-only -- app/templates`) m�
 
 1. Lee `DESIGN.md`, `design.toml` y `.claude/skills/kiro-design/SKILL.md`. Si
    `DESIGN.md` tiene `TODO`, para y pide `/kiro-init`: no hay contra qué revisar.
-2. Corre `make design-check`. Un error ahí (contrato sin compilar, fuente que
-   falta, atributo de motion por encima del nivel) se arregla **antes** de mirar
-   nada: lo que verás no sería el diseño real.
+2. Corre `make check`. Un fallo (arquitectura, suelo de UX, contrato sin compilar,
+   fuente que falta) se arregla **antes** de mirar nada: lo que verás no sería el
+   diseño real.
 3. Si cambiaste `design.toml`, `make design build`. Si cambiaste plantillas,
    `make css` (Tailwind descarta las clases que no ve).
 4. Asegura que la app corre: `curl -s http://localhost:<APP_PORT>/health` (el
@@ -28,8 +37,9 @@ páginas cuyas plantillas cambiaron (`git diff --name-only -- app/templates`) m�
 
 ## 2. Mira
 
-Captura cada ruta a **1280×900** (escritorio) y **375×812** (móvil), y a la vez
-el contenido bajo el primer pliegue. En este orden de preferencia:
+Captura cada ruta a **375×812** (móvil), **768×1024**, **1024×768** y **1440×900**: son
+los cuatro anchos de la guía de uupm. Si la superficie es `auto`, captura también en
+oscuro. En este orden de preferencia:
 
 1. **Claude in Chrome**, si está disponible *y llega al servidor*: abre la URL,
    redimensiona la ventana y haz capturas. Si el navegador está en otra máquina
@@ -37,51 +47,60 @@ el contenido bajo el primer pliegue. En este orden de preferencia:
 2. **Chrome/Chromium sin interfaz**, desde la terminal:
 
    ```bash
-   google-chrome --headless=new --no-sandbox --hide-scrollbars --virtual-time-budget=3000 \
-     --window-size=1280,900 --screenshot=/tmp/review-1280.png http://localhost:8000/
-   google-chrome --headless=new --no-sandbox --hide-scrollbars --virtual-time-budget=3000 \
-     --window-size=375,812  --screenshot=/tmp/review-375.png  http://localhost:8000/
+   for size in 375,812 768,1024 1024,768 1440,900; do
+     google-chrome --headless=new --no-sandbox --hide-scrollbars --virtual-time-budget=3000 \
+       --window-size=$size --screenshot=/tmp/review-${size%,*}.png http://localhost:8000/
+   done
    ```
 
-   Esas dos son lo que ve una persona al llegar, que es donde se decide. Para el
-   resto de la página, `--window-size=1280,3000` (ojo: las alturas `100dvh`
+   Para el resto de la página, `--window-size=1280,3000` (ojo: las alturas `100dvh`
    crecen con la ventana, así que un hero a pantalla completa saldrá enorme).
-   Con `design.toml` en `surface = "dark"` ya sale oscuro; si el proyecto tiene
-   un selector de tema propio, captura también el otro modo.
-3. **Pídele al usuario** que te pase capturas a esos dos anchos.
+   Con `design.toml` en `surface = "dark"` ya sale oscuro. Para el modo táctil
+   (`pointer: coarse`) hace falta el protocolo DevTools con emulación táctil.
+3. **Pídele al usuario** que te pase capturas a esos anchos.
 
 Mira las capturas de verdad (ábrelas), no te fíes de haber escrito el HTML.
 
-## 3. Juzga
+## 3. Juzga: una sola lista, ordenada por categoría
 
-Contrasta con tres cosas, y anota cada hallazgo como ✗ (hay que arreglarlo),
-! (conviene) o ✓.
+Haces **tres pasadas sobre las mismas capturas** y las vuelcas en **un único informe**
+ordenado por la prioridad de uupm (1 accesibilidad, 2 táctil, 3 rendimiento, 4 estilo,
+5 layout, 6 tipografía y color, 7 animación, 8 formularios, 9 navegación, 10 datos).
+Cada línea lleva: **id de regla** (`D1`, `P3`...; o el nombre del criterio si no tiene),
+**dueño** (uupm, taste o contrato), **✗** (hay que arreglarlo), **!** (conviene) o **✓**,
+la **evidencia** (qué ves, en qué ruta y ancho) y **dónde se arregla**.
 
-**a) `DESIGN.md`.** ¿Aparece la **firma visual** en esta página (los 2-3 gestos)?
-¿Se usan los arquetipos elegidos? ¿Coinciden estilo, tono y dials con lo que se
-ve? ¿Se parece a algo de "lo que NO debe parecer"?
+**Pasada uupm (UX).** Consulta lo que toca al producto de `PROJECT.md`:
+`make design-ux q="<la página que revisas>" domain=ux`, y los `Anti-patrones` de la
+propuesta de uupm si la hay (`.design/proposals/*.md`). Comprueba: estados de carga, vacío
+y error; errores de formulario junto al campo; foco visible en todo lo que se pulsa;
+objetivos táctiles de 44 px a 375 px; nada que desborde en horizontal; jerarquía de
+encabezados; que lo clicable lo parezca; transiciones de 150 a 300 ms; contraste.
 
-**b) La lista anti-slop de la skill** (`kiro-design`), en concreto: hero que cabe
-en el primer pliegue con visual real; sin "tres tarjetas iguales"; una sola
-escala de radios; un acento; tipografía local con carácter; estados de carga,
-vacío y error; contraste; foco visible; sin emoji, sin em dashes, sin nombres de
-relleno; sin color escrito a mano (solo tokens).
+**Pasada taste (personalidad).**
 
-**c) La pregunta clave: ¿se parece a la plantilla por defecto?** Responde con
-hechos, no con impresiones:
+- **a) `DESIGN.md`.** ¿Aparece la **firma visual** en esta página (los 2-3 gestos)?
+  ¿Se usan los arquetipos elegidos? ¿Coinciden estilo, tono y dials con lo que se
+  ve? ¿Se parece a algo de "lo que NO debe parecer"?
+- **b) La lista anti-slop de `kiro-design`**: hero que cabe en el primer pliegue con
+  visual real; una sola escala de radios; un acento; tipografía local con carácter; sin
+  emoji, sin em dashes, sin nombres de relleno; sin color escrito a mano (solo tokens).
+- **c) Patrones genéricos `P1` a `P10`.** `make design-check` ya los detecta; aquí se
+  confirman mirando. Cada uno es ✗ salvo que `[rules] allow` de `design.toml` lo
+  permita (y entonces `DESIGN.md` debe decir por qué).
+- **d) La pregunta clave: ¿se parece a la plantilla por defecto?** Responde con
+  hechos: ¿la cabecera es la `sticky-blur` gris de partida y el proyecto no la eligió?
+  ¿titular centrado + tres tarjetas iguales + botón? ¿el fondo, el texto y los bordes
+  son el gris neutro de Basecoat? ¿la fuente es la del sistema? ¿sale igual que `/`
+  recién clonado, solo con otro color de botón? Con dos o más "sí" **converge con el
+  default** y es un ✗: la causa suele estar en la estructura, no en el color.
 
-- ¿La cabecera es la `sticky-blur` gris de partida y el proyecto no la eligió?
-- ¿Titular centrado + tres tarjetas iguales + botón? ¿El badge sobre el titular?
-- ¿El fondo, el texto y los bordes son el gris neutro de Basecoat?
-- ¿La fuente es la del sistema (no hay `[type]` en `design.toml`)?
-- ¿Sale igual que `/` recién clonado, solo con otro color de botón?
+**Pasada del kit** (solo si `[structure] kit` de `design.toml` no es `none`): lo que el
+kit exige de plataforma (para `ios`, las medidas de Apple HIG: barras con material solo en
+la capa de navegación, 44 pt, márgenes de 16 y 20 px, texto base de 17 px).
 
-Si dos o más son "sí", **converge con el default** y es un ✗: la causa suele
-estar en la estructura (arquetipo, layout, cabecera), no en el color.
-
-Revisa también a 375 px: nada se desborda en horizontal, las columnas caen a una,
-los objetivos táctiles miden al menos 44 px, el hero no empuja la acción fuera
-del primer pliegue.
+**Si dos criterios chocan**, no preguntes: la tabla de `references/constitution.md`
+dice quién gana. Solo lo que no esté resuelto allí se pregunta al usuario, una vez.
 
 ## 4. Corrige
 
@@ -96,24 +115,28 @@ Arregla lo ✗ primero, luego lo !. Dónde:
 | La estructura de la página | la plantilla: otro arquetipo de `references/archetypes.md` |
 | Falta de personalidad | la firma visual: aplícala de verdad en la página |
 | Movimiento | atributos `data-motion`, dentro del nivel del proyecto |
+| Un patrón genérico que el proyecto quiere de verdad | `make design-set v="rules.allow=P1"` y una línea en *Decisiones de diseño* |
 
 **No toques**: la lógica de sesión (`partials/nav_auth.html`), las rutas, los
 formularios (`csrf_field`), los atributos de HTMX, ni lo vendorizado
-(`app/static/css/vendor/`, `app/templates/basecoat/`). No añadas JavaScript por
-página. No superes el nivel de motion del proyecto sin pedirlo: si hace falta,
-se sube en `design.toml` y se dice.
+(`app/static/css/vendor/`, `app/templates/basecoat/`, `.claude/skills/kiro-design/uupm/`).
+No añadas JavaScript por página. No superes el nivel de motion del proyecto sin
+pedirlo: si hace falta, se sube en `design.toml` y se dice. **El suelo no se relaja**:
+ni con `[rules] allow` ni porque el usuario lo pida sin haber leído esto; si de verdad
+quiere un contraste menor, díselo y que decida por escrito.
 
 Tras corregir: `make design build` si tocaste el contrato, `make css`, y
 **vuelve a capturar**.
 
-## 5. Repite una vez, y cierra
+## 5. Repite y cierra
 
-Segunda pasada: vuelve a juzgar solo lo que cambió y lo que quedó ✗. Después
-corre `make design-check` y `make check` y presenta:
+Segunda pasada: vuelve a juzgar solo lo que cambió y lo que quedó ✗. Después corre
+`make design-check` y `make check` y presenta el **informe único**:
 
-- Lo que encontraste y lo que cambiaste, en pocas líneas.
+- Lo que encontraste y lo que cambiaste, ordenado por categoría.
 - Las capturas finales (rutas de los archivos).
-- Lo que **no** se pudo resolver en dos pasadas y por qué, para que decida el
-  usuario. No sigas iterando por tu cuenta.
+- Lo que **no** se pudo resolver, para que decida el usuario con las opciones a la vista.
+  Esto vale para el **gusto**: no sigas iterando por tu cuenta. Si lo que queda es del
+  **suelo**, no cierres: arréglalo, aunque haga falta una tercera pasada.
 
 No hagas commit: eso lo decide quien revisa.

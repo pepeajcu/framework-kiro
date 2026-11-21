@@ -14,7 +14,7 @@ Start from `make design-init preset=editorial`; the preset writes this:
 [brand]
 primary   = "#7F1D1D"
 neutral   = "warm"   # pure | warm | cool | tinted
-surface   = "cream"   # light | cream | dark
+surface   = "cream"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "0rem"
 
@@ -31,7 +31,8 @@ theme = "sera"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 3   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "industrial-rule"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "industrial-rule"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
+density = 3   # 1 aireado ... 10 denso
 ```
 
 `sera` is the Basecoat theme with square corners and uppercase, tracked labels:

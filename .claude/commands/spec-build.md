@@ -6,13 +6,17 @@ description: Execute an approved task list, checking off tasks as they complete
 
 ## Pasos
 
-1. Lee `tasks.md` de la spec, y también `design.md` para tener el contexto.
-   Lee la skill `kiro-feature`: es el patrón que hay que seguir en cada capa.
+1. Localiza la spec en `docs/specs/`:
+   - Si fue creada con `/spec-plan`, lee `plan.md` (contiene requisitos, diseño
+     y la lista de tareas).
+   - Si fue creada con el flujo completo, lee `tasks.md` y `design.md`.
+   Lee también la skill `kiro-feature`: es el patrón que hay que seguir en cada
+   capa.
 
 2. Ejecuta las tareas **en orden**, una a una:
    - Implementa la tarea.
    - Comprueba su criterio de "hecho cuando".
-   - Marca `- [x]` en `tasks.md` antes de pasar a la siguiente.
+   - Marca `- [x]` en `plan.md` (o `tasks.md`) antes de pasar a la siguiente.
 
 3. Si una tarea resulta estar mal planteada —falta información, el diseño no
    encaja con el código real, aparece un caso no contemplado— **para y díselo al

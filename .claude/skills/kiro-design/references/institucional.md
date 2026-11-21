@@ -15,7 +15,7 @@ Start from `make design-init preset=institucional`; the preset writes this:
 [brand]
 primary   = "#1E3A8A"
 neutral   = "cool"   # pure | warm | cool | tinted
-surface   = "light"   # light | cream | dark
+surface   = "light"   # light | cream | dark | auto
 secondary = ""   # opcional: un segundo color de marca
 radius    = "0.375rem"
 
@@ -32,7 +32,7 @@ theme = "vega"   # vega | nova | maia | lyra | mira | luma | sera | rhea
 level = 2   # 1-3 CSS · 4-6 motion.js · 7-8 Motion · 9-10 GSAP
 
 [structure]
-header = "sticky-blur"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | custom
+header = "sticky-blur"   # sticky-blur | floating-pill | industrial-rule | terminal-bar | ios-bar | custom
 ```
 
 ## Composition
