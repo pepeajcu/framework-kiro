@@ -77,16 +77,22 @@ def test_ga4_sender_invents_a_client_id_when_none_is_given(monkeypatch):
     assert recorder.calls[0]["json"]["client_id"]
 
 
-def test_ga4_sender_swallows_http_errors(monkeypatch):
+def test_ga4_sender_swallows_http_errors_without_leaking_secret(monkeypatch, caplog):
     def fail(url, **kwargs):
-        raise httpx2.HTTPError("boom")
+        req = httpx2.Request("POST", f"{url}?api_secret=my-ga4-secret")
+        resp = httpx2.Response(500, request=req)
+        raise httpx2.HTTPStatusError(
+            "500 error for url " + str(req.url), request=req, response=resp
+        )
 
     monkeypatch.setattr(httpx2, "post", fail)
 
-    # Must not raise.
-    Ga4AnalyticsSender(measurement_id="G-TEST", api_secret="secret").track(
-        AnalyticsEvent(name="login")
-    )
+    with caplog.at_level("WARNING"):
+        Ga4AnalyticsSender(measurement_id="G-TEST", api_secret="my-ga4-secret").track(
+            AnalyticsEvent(name="login")
+        )
+
+    assert "my-ga4-secret" not in caplog.text
 
 
 # --- Meta -------------------------------------------------------------------
@@ -114,13 +120,22 @@ def test_meta_sender_hashes_the_email_and_forwards_ip_and_user_agent(monkeypatch
     assert "Ana@Example.com" not in str(recorder.calls[0]["json"])
 
 
-def test_meta_sender_swallows_http_errors(monkeypatch):
+def test_meta_sender_swallows_http_errors_without_leaking_token(monkeypatch, caplog):
     def fail(url, **kwargs):
-        raise httpx2.HTTPError("boom")
+        req = httpx2.Request("POST", f"{url}?access_token=my-meta-secret-token")
+        resp = httpx2.Response(500, request=req)
+        raise httpx2.HTTPStatusError(
+            "500 error for url " + str(req.url), request=req, response=resp
+        )
 
     monkeypatch.setattr(httpx2, "post", fail)
 
-    MetaAnalyticsSender(pixel_id="123", access_token="tok").track(AnalyticsEvent(name="login"))
+    with caplog.at_level("WARNING"):
+        MetaAnalyticsSender(pixel_id="123", access_token="my-meta-secret-token").track(
+            AnalyticsEvent(name="login")
+        )
+
+    assert "my-meta-secret-token" not in caplog.text
 
 
 # --- Composite / dispatch ----------------------------------------------------

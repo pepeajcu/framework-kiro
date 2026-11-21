@@ -25,14 +25,15 @@ DISALLOWED_PATHS = ("/login", "/register", "/forgot-password", "/reset-password"
 @router.get("/robots.txt", response_class=PlainTextResponse)
 def robots_txt(settings: AppSettings) -> str:
     """Allow everything except the auth forms, and point at the sitemap."""
+    base_url = settings.base_url.rstrip("/")
     lines = ["User-agent: *"]
     lines += [f"Disallow: {path}" for path in DISALLOWED_PATHS]
-    lines.append(f"Sitemap: {settings.base_url}/sitemap.xml")
+    lines.append(f"Sitemap: {base_url}/sitemap.xml")
     return "\n".join(lines) + "\n"
 
 
 def _url_entry(base_url: str, entry: SitemapEntry) -> str:
-    parts = [f"<loc>{escape(base_url + entry.loc)}</loc>"]
+    parts = [f"<loc>{escape(base_url.rstrip('/') + entry.loc)}</loc>"]
     if entry.lastmod is not None:
         parts.append(f"<lastmod>{entry.lastmod.isoformat()}</lastmod>")
     if entry.changefreq is not None:
@@ -45,7 +46,8 @@ def _url_entry(base_url: str, entry: SitemapEntry) -> str:
 @router.get("/sitemap.xml")
 def sitemap_xml(settings: AppSettings, db: DbSession) -> Response:
     """Static pages plus whatever `register_sitemap_provider` callers added."""
-    urls = "".join(_url_entry(settings.base_url, entry) for entry in all_entries(db))
+    base_url = settings.base_url.rstrip("/")
+    urls = "".join(_url_entry(base_url, entry) for entry in all_entries(db))
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + "</urlset>"

@@ -260,7 +260,7 @@ def test_the_floor_finds_the_pages_of_the_project() -> None:
     """A parametrised test over an empty list passes by skipping: do not let it."""
     pages = _routes()
 
-    assert {"/", "/login", "/register", "/forgot-password", "/notes"} <= set(pages)
+    assert {"/", "/login", "/register", "/forgot-password"} <= set(pages)
 
 
 def test_every_route_with_a_parameter_has_an_example() -> None:

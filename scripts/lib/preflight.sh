@@ -13,18 +13,28 @@ preflight::require_cmd() {
   log::ok "$cmd"
 }
 
-# Python 3.12 o superior. Se compara con el propio intérprete para no
-# depender de parsear texto de versión, que cambia entre distribuciones.
+# Python >=3.12,<3.15. Se compara con el propio intérprete para no depender de
+# parsear texto de versión, que cambia entre distribuciones. Exporta KIRO_PYTHON
+# para que scripts/lib/replace.sh use el mismo intérprete validado.
 preflight::require_python() {
-  local min_major=3 min_minor=12
+  local min_major=3 min_minor=12 max_minor=15
+  if preflight::has python3 && python3 -c "import sys; sys.exit(0 if ($min_major, $min_minor) <= sys.version_info < ($min_major, $max_minor) else 1)" 2>/dev/null; then
+    export KIRO_PYTHON="python3"
+    log::ok "$(python3 -V 2>&1)"
+    return 0
+  fi
+
+  if preflight::has uv && uv run --no-project --python ">=3.12,<3.15" python -c "import sys" >/dev/null 2>&1; then
+    export KIRO_PYTHON="uv run --no-project --python >=3.12,<3.15 python"
+    log::ok "$(uv run --no-project --python ">=3.12,<3.15" python -V 2>&1) (vía uv)"
+    return 0
+  fi
+
   preflight::has python3 || log::die "no se encontró 'python3'" \
     "instálalo con el gestor de paquetes de tu sistema (apt install python3)"
 
-  if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= ($min_major, $min_minor) else 1)"; then
-    log::die "se requiere Python ${min_major}.${min_minor}+, se encontró $(python3 -V 2>&1)" \
-      "instala una versión más reciente, o deja que uv gestione el intérprete"
-  fi
-  log::ok "$(python3 -V 2>&1)"
+  log::die "se requiere Python >=${min_major}.${min_minor},<${min_major}.${max_minor}, se encontró $(python3 -V 2>&1)" \
+    "instala Python 3.12-3.14, o instala uv para que gestione el intérprete"
 }
 
 # Diagnóstico del último preflight::check_docker fallido. Se expone en vez de

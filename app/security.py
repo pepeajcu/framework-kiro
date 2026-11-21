@@ -19,7 +19,7 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 from fastapi import Response
 from itsdangerous import BadSignature, URLSafeSerializer, URLSafeTimedSerializer
 
-from app.config import Settings
+from app.config import Settings, get_settings
 
 # argon2id with the library defaults: 64 MiB of memory, 3 iterations, 4 lanes.
 # Memory-hard by design — that is what makes a GPU farm a poor investment
@@ -32,6 +32,7 @@ _hasher = PasswordHasher()
 _DUMMY_HASH = _hasher.hash("a password that is never anyone's")
 
 SESSION_COOKIE_NAME = "session"
+CSRF_COOKIE_NAME = "csrf_token"
 
 # Salts keep signatures for different purposes from being interchangeable, even
 # though they share SECRET_KEY: a session cookie can never be replayed as
@@ -88,6 +89,11 @@ def new_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def new_csrf_token() -> str:
+    """Mint a CSRF token for a browser or a session state transition."""
+    return secrets.token_urlsafe(32)
+
+
 def hash_token(token: str) -> str:
     """Hash an opaque token for storage.
 
@@ -124,8 +130,24 @@ def unsign_session_token(value: str, settings: Settings) -> str | None:
         return None
 
 
+def set_csrf_cookie(response: Response, token: str, settings: Settings) -> None:
+    """Attach the CSRF cookie to a response."""
+    response.set_cookie(
+        CSRF_COOKIE_NAME,
+        token,
+        max_age=settings.session_lifetime_days * 24 * 60 * 60,
+        # HttpOnly is safe here because the token reaches the page from
+        # the server, rendered into the form and into `hx-headers` — no
+        # JavaScript ever needs to read the cookie.
+        httponly=True,
+        secure=settings.is_production,
+        samesite="lax",
+        path="/",
+    )
+
+
 def set_session_cookie(response: Response, token: str, settings: Settings) -> None:
-    """Attach the session cookie to a response.
+    """Attach the session cookie to a response and rotate the CSRF token.
 
     Every flag here matters:
 
@@ -147,6 +169,7 @@ def set_session_cookie(response: Response, token: str, settings: Settings) -> No
         samesite="lax",
         path="/",
     )
+    set_csrf_cookie(response, new_csrf_token(), settings)
 
 
 # --- Flash messages ------------------------------------------------------------
@@ -174,10 +197,18 @@ def unsign_flash(value: str, settings: Settings) -> dict[str, str] | None:
     return data
 
 
-def clear_session_cookie(response: Response) -> None:
-    """Remove the session cookie.
+def clear_session_cookie(response: Response, settings: Settings | None = None) -> None:
+    """Remove the session cookie and rotate the CSRF token.
 
     The flags must match the ones it was set with or the browser keeps the old
     cookie alongside the deletion.
     """
-    response.delete_cookie(SESSION_COOKIE_NAME, path="/", httponly=True, samesite="lax")
+    resolved = settings or get_settings()
+    response.delete_cookie(
+        SESSION_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=resolved.is_production,
+        samesite="lax",
+    )
+    set_csrf_cookie(response, new_csrf_token(), resolved)

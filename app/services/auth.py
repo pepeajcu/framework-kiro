@@ -22,7 +22,7 @@ import datetime as dt
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.emails import EmailSender, render_email
+from app.emails import EmailMessage, EmailSender, deliver_email, render_email
 from app.exceptions import ConflictError, InvalidCredentialsError, InvalidTokenError
 from app.models.role import USER_ROLE
 from app.models.user import User
@@ -60,9 +60,10 @@ class AuthService:
     def register(self, *, email: str, password: str, full_name: str = "") -> User:
         """Create an account with the default role.
 
-        Raises `ConflictError` if the address is taken. The caller must render
-        that as a form error, never as a page that says "this email is already
-        registered" to a stranger — see rule 1.
+        Raises `ConflictError` if the address is taken. Because registration logs
+        the new user straight in without a verification step, the router renders
+        this as a form error on the email field (the one documented UX exception
+        to account enumeration — see AGENTS.md).
         """
         if self.users.email_exists(email):
             raise ConflictError(f"email already registered: {normalise_email(email)}")
@@ -163,16 +164,21 @@ class AuthService:
 
     # --- Password recovery -------------------------------------------------
 
-    def request_password_reset(self, email: str, *, emailer: EmailSender) -> None:
-        """Email a reset link, if the address belongs to an active account.
+    def request_password_reset(
+        self, email: str, *, emailer: EmailSender | None = None
+    ) -> EmailMessage | None:
+        """Prepare (and optionally send) a reset link if the address is an active account.
 
-        Returns nothing in every case, including an unknown address. The caller
-        renders the same confirmation either way: a form that answers "no such
-        user" is a list of everyone who *is* a user.
+        Returns the rendered `EmailMessage` when a link was minted, or `None`
+        for an unknown or disabled address. The caller renders the same
+        confirmation either way: a form that answers "no such user" is a list of
+        everyone who *is* a user. When `emailer` is passed directly, delivery
+        errors are caught and logged (`deliver_email`) so a provider outage never
+        surfaces as a 500 or rolls back the rate-limit hit.
         """
         user = self.users.get_by_email(email)
         if user is None or not user.is_active:
-            return
+            return None
 
         # Only one link at a time can be live. Otherwise every click on "I
         # forgot my password" leaves another working key in the inbox.
@@ -186,14 +192,15 @@ class AuthService:
             expires_at=dt.datetime.now(tz=dt.UTC) + ttl,
         )
 
-        emailer.send(
-            render_email(
-                "password_reset",
-                to=user.email,
-                reset_url=f"{self.settings.base_url.rstrip('/')}/reset-password/{token}",
-                expires_in_minutes=self.settings.password_reset_ttl_minutes,
-            )
+        message = render_email(
+            "password_reset",
+            to=user.email,
+            reset_url=f"{self.settings.base_url.rstrip('/')}/reset-password/{token}",
+            expires_in_minutes=self.settings.password_reset_ttl_minutes,
         )
+        if emailer is not None:
+            deliver_email(emailer, message)
+        return message
 
     def user_for_reset_token(self, token: str) -> User:
         """Return the account a reset link belongs to.
@@ -208,13 +215,12 @@ class AuthService:
         return record.user
 
     def reset_password(self, token: str, new_password: str) -> User:
-        """Spend a reset token and set the new password."""
-        record = self.reset_tokens.get_by_token(token)
-        if record is None or not record.is_usable():
+        """Spend a reset token atomically and set the new password."""
+        record = self.reset_tokens.consume_by_token(token)
+        if record is None:
             raise InvalidTokenError
 
         user = record.user
-        self.reset_tokens.mark_used(record)
         # Revokes every session too: if somebody else was already inside the
         # account, this is the moment they are thrown out.
         self.set_password(user, new_password)

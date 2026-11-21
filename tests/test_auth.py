@@ -265,8 +265,11 @@ def reset_url_from(mailbox) -> str:
 def test_forgot_password_emails_a_working_link(client, mailbox, user):
     response = client.post("/forgot-password", data={"email": user.email})
 
-    assert response.status_code == 200
-    assert "Revisa tu correo" in response.text
+    assert response.status_code == 303
+    assert response.headers["location"] == "/forgot-password/sent"
+    sent_page = client.get(response.headers["location"])
+    assert sent_page.status_code == 200
+    assert "Revisa tu correo" in sent_page.text
     assert mailbox.last.to == user.email
 
     assert client.get(reset_url_from(mailbox)).status_code == 200
@@ -277,9 +280,37 @@ def test_forgot_password_says_the_same_thing_for_an_unknown_address(client, mail
     known = client.post("/forgot-password", data={"email": "ana@example.com"})
     unknown = client.post("/forgot-password", data={"email": "nadie@example.com"})
 
-    assert known.status_code == unknown.status_code == 200
-    assert "Revisa tu correo" in unknown.text
+    assert known.status_code == unknown.status_code == 303
+    assert known.headers["location"] == unknown.headers["location"] == "/forgot-password/sent"
+    assert "Revisa tu correo" in client.get("/forgot-password/sent").text
     assert mailbox.outbox == []
+
+
+def test_forgot_password_survives_an_email_provider_outage(db_session, user):
+    """A provider outage must not 500 only for real users or roll back rate limits."""
+    from app.emails.base import EmailMessage
+    from app.exceptions import EmailDeliveryError
+
+    class BrokenEmailSender:
+        def send(self, message: EmailMessage) -> None:
+            raise EmailDeliveryError("SMTP down")
+
+    settings = get_settings().model_copy(update={"password_reset_max_requests": 1})
+    app = create_app(settings, enforce_csrf=False)
+    override_dependencies(app, db_session, BrokenEmailSender(), settings=settings)  # type: ignore[arg-type]
+
+    with TestClient(app, follow_redirects=False) as broken_client:
+        first = broken_client.post("/forgot-password", data={"email": user.email})
+        second = broken_client.post("/forgot-password", data={"email": user.email})
+
+    assert first.status_code == 303
+    # The rate-limit hit survived because the transaction was not rolled back.
+    assert second.status_code == 429
+
+
+def test_user_repr_does_not_leak_email(user):
+    assert user.email not in repr(user)
+    assert str(user.id) in repr(user)
 
 
 def test_a_reset_link_works_once(client, mailbox, user):

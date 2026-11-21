@@ -33,6 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
 
       - name: Un locale sin UTF-8 no rompe el slug
         # `sed y/áé…/ae…/` cuenta BYTES fuera de UTF-8, así que los dos
@@ -135,6 +137,8 @@ jobs:
 
       - name: Instalar uv
         uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
 
       - name: Correr setup.sh sobre un clon limpio
         # Sobre una copia, no sobre el checkout: setup.sh borra archivos del

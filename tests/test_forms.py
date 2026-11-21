@@ -16,9 +16,8 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
-from app.hypermedia import flash
+from app.hypermedia import flash, toast_response
 from app.main import create_app
-from app.repositories.note import NoteRepository
 from app.schemas import FormResult, validate_form
 from app.schemas.auth import LoginForm
 from app.security import FLASH_COOKIE_NAME, sign_flash, unsign_flash
@@ -206,14 +205,32 @@ def test_a_rejected_registration_keeps_the_name_and_the_address(client: TestClie
     assert 'value="Ana"' in response.text and 'value="no-es-un-email"' in response.text
 
 
-def test_a_rejected_note_keeps_title_and_body_in_a_textarea(logged_in_client: TestClient) -> None:
-    response = logged_in_client.post("/notes", data={"title": "", "body": "Lo que escribí\ny más"})
-
-    assert response.status_code == 400
-    assert "<textarea" in response.text and "Lo que escribí" in response.text
-
-
 # --- Flash messages --------
+
+
+@pytest.fixture
+def flash_client(db_session, mailbox):  # type: ignore[no-untyped-def]
+    app = create_app(enforce_csrf=False)
+    override_dependencies(app, db_session, mailbox)
+
+    @app.post("/_flash/create")
+    def create_item() -> Response:
+        return flash(
+            RedirectResponse("/_flash/page", status_code=303),
+            get_settings(),
+            "Elemento guardado",
+        )
+
+    @app.get("/_flash/page")
+    def show_page(request: Request) -> Response:
+        return render(request, "pages/404.html")
+
+    @app.delete("/_flash/item")
+    def delete_item(request: Request) -> Response:
+        return toast_response(request, title="Elemento eliminado", replace_target=True)
+
+    with TestClient(app, follow_redirects=False) as probe:
+        yield probe
 
 
 def test_a_flash_is_signed_and_forgeries_stale_or_foreign_values_are_ignored() -> None:
@@ -235,32 +252,33 @@ def test_a_session_cookie_cannot_be_replayed_as_a_flash() -> None:
     assert unsign_flash(sign_session_token("un-token", get_settings()), get_settings()) is None
 
 
-def test_creating_a_note_says_so_on_the_next_page_once(logged_in_client: TestClient) -> None:
-    created = logged_in_client.post("/notes", data={"title": "Compras", "body": "Leche"})
+def test_a_flash_says_so_on_the_next_page_once(flash_client: TestClient) -> None:
+    created = flash_client.post("/_flash/create")
 
     assert created.status_code == 303
     assert FLASH_COOKIE_NAME in created.cookies
 
-    first = logged_in_client.get("/notes")
-    assert "Nota guardada" in first.text and 'data-category="success"' in first.text
+    first = flash_client.get("/_flash/page")
+    assert "Elemento guardado" in first.text and 'data-category="success"' in first.text
     assert 'role="status"' in first.text
     # The page deleted it: nothing is left to show a second time.
-    assert FLASH_COOKIE_NAME not in logged_in_client.cookies or not logged_in_client.cookies.get(
+    assert FLASH_COOKIE_NAME not in flash_client.cookies or not flash_client.cookies.get(
         FLASH_COOKIE_NAME
     )
-    assert "Nota guardada" not in logged_in_client.get("/notes").text
+    assert "Elemento guardado" not in flash_client.get("/_flash/page").text
 
 
-def test_a_flash_is_not_eaten_by_an_htmx_fragment(logged_in_client: TestClient) -> None:
-    logged_in_client.post("/notes", data={"title": "Compras", "body": "Leche"})
+def test_a_flash_is_not_eaten_by_an_htmx_fragment(flash_client: TestClient) -> None:
+    flash_client.post("/_flash/create")
 
-    fragment = logged_in_client.get("/demo/ping", headers={"HX-Request": "true"})
-    page = logged_in_client.get("/notes")
+    fragment = flash_client.get("/demo/ping", headers={"HX-Request": "true"})
+    page = flash_client.get("/_flash/page")
 
-    assert "Nota guardada" not in fragment.text and FLASH_COOKIE_NAME not in fragment.headers.get(
-        "set-cookie", ""
+    assert (
+        "Elemento guardado" not in fragment.text
+        and FLASH_COOKIE_NAME not in fragment.headers.get("set-cookie", "")
     )
-    assert "Nota guardada" in page.text
+    assert "Elemento guardado" in page.text
 
 
 def test_a_forged_flash_cookie_shows_nothing_and_is_cleared(client: TestClient) -> None:
@@ -294,15 +312,10 @@ def test_the_text_of_a_flash_is_escaped(db_session, mailbox) -> None:  # type: i
     assert "&lt;script&gt;" in html
 
 
-def test_deleting_a_note_over_htmx_removes_it_and_says_so(
-    logged_in_client: TestClient,
-    db_session,
-    user,  # type: ignore[no-untyped-def]
+def test_toast_response_with_replace_target_removes_element_and_says_so(
+    flash_client: TestClient,
 ) -> None:
-    note = NoteRepository(db_session).create(user_id=user.id, title="Temporal", body="x")
-    db_session.flush()
-
-    response = logged_in_client.delete(f"/notes/{note.id}", headers={"HX-Request": "true"})
+    response = flash_client.delete("/_flash/item", headers={"HX-Request": "true"})
 
     assert response.status_code == 200 and "HX-Reswap" not in response.headers
-    assert 'data-category="success"' in response.text and "Nota eliminada" in response.text
+    assert 'data-category="success"' in response.text and "Elemento eliminado" in response.text

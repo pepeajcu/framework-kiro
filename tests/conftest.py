@@ -142,6 +142,7 @@ def override_dependencies(
     app.dependency_overrides[get_email_sender] = lambda: mailbox
     if settings is not None:
         app.dependency_overrides[get_settings_dependency] = lambda: settings
+        app.state.settings = settings
 
 
 @pytest.fixture

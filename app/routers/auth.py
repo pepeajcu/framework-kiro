@@ -12,13 +12,17 @@ form carrying a 400 on failure.
 from __future__ import annotations
 
 import datetime as dt
+import ipaddress
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.analytics import AnalyticsEvent
+from app.config import Settings
 from app.deps import Analytics, AppSettings, DbSession, Emailer, OptionalUser
+from app.emails import deliver_email
 from app.exceptions import ConflictError, InvalidCredentialsError, InvalidTokenError
 from app.schemas import validate_form
 from app.schemas.auth import ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
@@ -61,9 +65,74 @@ def safe_next_url(candidate: str | None) -> str:
     return candidate
 
 
-def _client_fingerprint(request: Request) -> tuple[str, str]:
-    """The IP and user agent to record on a session, for the user to recognise."""
-    ip = request.client.host if request.client else ""
+@lru_cache(maxsize=8)
+def _parse_trusted_proxies(
+    spec: str,
+) -> tuple[
+    bool,
+    frozenset[ipaddress.IPv4Address | ipaddress.IPv6Address],
+    tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...],
+    frozenset[str],
+]:
+    """Parse `FORWARDED_ALLOW_IPS` into addresses, networks and literal hostnames."""
+    entries = [item.strip() for item in spec.split(",") if item.strip()]
+    if "*" in entries:
+        return True, frozenset(), (), frozenset()
+
+    hosts: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+    networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    literals: set[str] = {"testclient"}
+    for entry in entries:
+        if "/" in entry:
+            try:
+                networks.append(ipaddress.ip_network(entry, strict=False))
+                continue
+            except ValueError:
+                pass
+        try:
+            hosts.add(ipaddress.ip_address(entry))
+        except ValueError:
+            literals.add(entry)
+    return False, frozenset(hosts), tuple(networks), frozenset(literals)
+
+
+def _is_trusted_proxy(host: str, spec: str) -> bool:
+    """Whether `host` is a reverse proxy we trust to set `X-Forwarded-For`."""
+    if not host:
+        return False
+    trust_all, hosts, networks, literals = _parse_trusted_proxies(spec)
+    if trust_all:
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return host in literals
+    return addr in hosts or any(addr in net for net in networks)
+
+
+def _client_fingerprint(request: Request, settings: Settings | None = None) -> tuple[str, str]:
+    """The real client IP (through trusted proxies only) and user agent."""
+    peer = request.client.host if request.client else ""
+    app_settings: Settings | None = settings or getattr(request.app.state, "settings", None)
+    allow_ips = (
+        app_settings.forwarded_allow_ips
+        if app_settings is not None
+        else "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    )
+
+    ip = peer
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for and _is_trusted_proxy(peer, allow_ips):
+        chain = [hop.strip() for hop in forwarded_for.split(",") if hop.strip()]
+        if chain:
+            # Walk right-to-left: each trusted proxy appends to the end, so the
+            # first non-trusted hop from the right is the real connecting client.
+            ip = chain[0]
+            for hop in reversed(chain):
+                if not _is_trusted_proxy(hop, allow_ips):
+                    ip = hop
+                    break
+
     return ip, request.headers.get("user-agent", "")
 
 
@@ -123,7 +192,7 @@ def login(
     service = AuthService(db, settings)
     form = validate_form(LoginForm, email=email, password=password)
 
-    ip, user_agent = _client_fingerprint(request)
+    ip, user_agent = _client_fingerprint(request, settings)
     limiter = RateLimiter(db)
     buckets = login_buckets(ip=ip, email=email)
     limit = RateLimit(
@@ -166,8 +235,10 @@ def login(
             status_code=400,
         )
 
-    # The attempts that led here were somebody remembering their own password.
-    limiter.reset(buckets)
+    # Only clear the account's own email bucket: clearing the IP bucket would let
+    # an attacker reset their IP counter after 9 failed guesses against a victim
+    # simply by logging into an account of their own.
+    limiter.reset([f"login:email:{account.email}"[:128]])
     token = service.start_session(account, ip_address=ip, user_agent=user_agent)
     _track_signal(
         background_tasks,
@@ -198,7 +269,7 @@ def logout(request: Request, db: DbSession, settings: AppSettings) -> Response:
             AuthService(db, settings).end_session(token)
 
     response = RedirectResponse("/", status_code=SEE_OTHER)
-    clear_session_cookie(response)
+    clear_session_cookie(response, settings)
     return response
 
 
@@ -259,7 +330,7 @@ def register(
             status_code=400,
         )
 
-    ip, user_agent = _client_fingerprint(request)
+    ip, user_agent = _client_fingerprint(request, settings)
     token = service.start_session(account, ip_address=ip, user_agent=user_agent)
     _track_signal(
         background_tasks,
@@ -285,21 +356,28 @@ def forgot_password_form(request: Request, user: OptionalUser) -> Response:
     return render(request, "pages/auth/forgot_password.html")
 
 
+@router.get("/forgot-password/sent", response_class=HTMLResponse)
+def forgot_password_sent(request: Request, user: OptionalUser) -> Response:
+    """Confirmation page after requesting a password reset link."""
+    return render(request, "pages/auth/forgot_password_sent.html")
+
+
 @router.post("/forgot-password", response_class=HTMLResponse)
 def forgot_password(
     request: Request,
     db: DbSession,
     settings: AppSettings,
+    background_tasks: BackgroundTasks,
     emailer: Emailer,
     user: OptionalUser,
     email: Annotated[str, Form()] = "",
 ) -> Response:
-    """Send a reset link, and say the same thing either way."""
+    """Send a reset link, and redirect to the same confirmation page either way."""
     form = validate_form(ForgotPasswordForm, email=email)
     if form.data is None:
         return render(request, "pages/auth/forgot_password.html", {"form": form}, status_code=400)
 
-    ip, _ = _client_fingerprint(request)
+    ip, _ = _client_fingerprint(request, settings)
     limiter = RateLimiter(db)
     buckets = password_reset_buckets(ip=ip, email=form.data.email)
     limit = RateLimit(
@@ -319,11 +397,13 @@ def forgot_password(
         )
     limiter.record(buckets)
 
-    AuthService(db, settings).request_password_reset(form.data.email, emailer=emailer)
+    message = AuthService(db, settings).request_password_reset(form.data.email)
+    if message is not None:
+        background_tasks.add_task(deliver_email, emailer, message)
 
-    # Always the same page, whether or not the address exists. A form that
-    # answers "we have no such user" is a way to enumerate every user.
-    return render(request, "pages/auth/forgot_password_sent.html", {"email": form.data.email})
+    # Post/Redirect/Get (303) to the same confirmation page whether or not the
+    # address exists, so refreshing never re-submits the form.
+    return RedirectResponse("/forgot-password/sent", status_code=SEE_OTHER)
 
 
 @router.get("/reset-password/{token}", response_class=HTMLResponse)
@@ -373,7 +453,7 @@ def reset_password(
     # `reset_password` revoked every session this account had, this browser
     # included. Opening a fresh one is what makes the flow end logged in
     # rather than back at the login form.
-    ip, user_agent = _client_fingerprint(request)
+    ip, user_agent = _client_fingerprint(request, settings)
     new_session = service.start_session(account, ip_address=ip, user_agent=user_agent)
 
     response = RedirectResponse("/", status_code=SEE_OTHER)

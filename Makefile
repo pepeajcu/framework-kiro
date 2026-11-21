@@ -11,7 +11,7 @@ APP_PORT := $(or $(APP_PORT),8000)
 .DEFAULT_GOAL := help
 .PHONY: help dev up down logs ps shell migrate revision migrations-check seed \
 	css css-watch logo brand-colors font motion design design-build design-watch design-init \
-	design-set design-check design-propose design-apply design-reference design-brief-schema design-advise design-ux vendor-uupm archcheck lint format types test cov audit check upgrade clean
+	design-set design-check design-propose design-apply design-reference design-brief-schema design-advise design-ux vendor-uupm archcheck lint format types test cov audit check strip-example upgrade clean
 
 # --- Ayuda ------------------------------------------------------------------
 
@@ -178,6 +178,10 @@ check:  ## Lint + tipos + css + diseño + arquitectura + tests + migraciones. Es
 	@echo "  \033[1;32m✓ todo en orden\033[0m"
 
 # --- Mantenimiento ----------------------------------------------------------
+
+strip-example:  ## Eliminar el CRUD de ejemplo (notes) para empezar un proyecto limpio
+	uv run python -m scripts.strip_example
+	$(MAKE) css
 
 upgrade:  ## Ver qué mejoras del framework hay disponibles (requiere remote 'upstream')
 	@git remote get-url upstream >/dev/null 2>&1 \

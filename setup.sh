@@ -86,6 +86,7 @@ DO_BOOTSTRAP=true
 # es el único motivo desde que faltar Docker dejó de ser fatal.
 BOOTSTRAP_SKIP_REASON="--no-bootstrap"
 KEEP_FRAMEWORK_FILES=false
+STRIP_EXAMPLE=false
 FORCE=false
 
 usage() {
@@ -115,6 +116,7 @@ OPCIONES DE EJECUCIÓN
                                           (habilita `make upgrade`)
                                keep     = no tocar git
     --no-bootstrap           No levantar Docker ni correr migraciones
+    --strip-example          Eliminar el CRUD de ejemplo (notes) antes de arrancar
     --keep-framework-files   Conservar los archivos internos del framework
     --force                  Volver a correr aunque el setup ya se haya ejecutado
     -h, --help               Mostrar esta ayuda
@@ -144,6 +146,7 @@ parse_args() {
       --git-mode) GIT_MODE=${2:?--git-mode requiere un valor}; shift 2 ;;
       -y | --non-interactive) NON_INTERACTIVE=true; shift ;;
       --no-bootstrap) DO_BOOTSTRAP=false; shift ;;
+      --strip-example | --no-example) STRIP_EXAMPLE=true; shift ;;
       --keep-framework-files) KEEP_FRAMEWORK_FILES=true; shift ;;
       --force) FORCE=true; shift ;;
       -h | --help) usage; exit 0 ;;
@@ -507,6 +510,10 @@ substitute_tokens() {
   if [[ -f uv.lock ]]; then
     uv lock --quiet 2>/dev/null || uv lock
     log::ok "uv.lock actualizado con el nombre del proyecto"
+  fi
+
+  if [[ $STRIP_EXAMPLE == true && -f scripts/strip_example.py ]]; then
+    replace::python -m scripts.strip_example
   fi
 
   log::ok "archivos personalizados"

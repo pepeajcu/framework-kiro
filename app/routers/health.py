@@ -22,7 +22,6 @@ class HealthResponse(BaseModel):
 
     status: str
     app: str
-    environment: str
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -31,5 +30,4 @@ def health(settings: Annotated[Settings, Depends(get_settings)]) -> HealthRespon
     return HealthResponse(
         status="ok",
         app=settings.app_name,
-        environment=settings.environment.value,
     )

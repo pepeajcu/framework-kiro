@@ -318,26 +318,129 @@ def test_login_stops_answering_after_too_many_wrong_passwords(db_session, mailbo
     assert with_real_password.status_code == 429
 
 
-def test_getting_it_right_clears_the_counter(db_session, mailbox, user):
-    """Somebody mistyping their own password twice must not be locked out."""
+def test_getting_it_right_clears_the_email_counter_but_not_the_ip_counter(
+    db_session, mailbox, user, auth
+):
+    """Mistyping your own password clears your email bucket on success,
+    but never resets the IP bucket (which an attacker could abuse by logging
+    into their own account every 9 guesses).
+    """
     settings = get_settings().model_copy(update={"login_max_attempts": 3})
-    app = create_app(enforce_csrf=False)
+    app = create_app(settings, enforce_csrf=False)
+    override_dependencies(app, db_session, mailbox, settings=settings)
+    attacker = auth.register(email="atacante@example.com", password=PASSWORD)
+
+    with TestClient(app, follow_redirects=False) as client:
+        # 1. Legitimate user mistypes twice from IP 1, then logs in: email bucket resets.
+        ip1 = {"X-Forwarded-For": "203.0.113.10"}
+        ip2 = {"X-Forwarded-For": "203.0.113.20"}
+        client.post("/login", data={"email": user.email, "password": "no es"}, headers=ip1)
+        client.post("/login", data={"email": user.email, "password": "tampoco"}, headers=ip1)
+        assert (
+            client.post(
+                "/login", data={"email": user.email, "password": PASSWORD}, headers=ip1
+            ).status_code
+            == 303
+        )
+        client.post("/logout", headers=ip1)
+
+        # From another IP, two more typos for the same email still get 400 (not 429),
+        # proving the email bucket was cleared on login.
+        for _ in range(2):
+            again = client.post(
+                "/login", data={"email": user.email, "password": "no es"}, headers=ip2
+            )
+        assert again.status_code == 400
+
+        # 2. Meanwhile on IP 1, two failures had already been recorded. Logging into
+        # `attacker` from IP 1 must NOT clear IP 1's counter.
+        assert (
+            client.post(
+                "/login", data={"email": attacker.email, "password": PASSWORD}, headers=ip1
+            ).status_code
+            == 303
+        )
+        client.post("/logout", headers=ip1)
+        # 3rd failure from IP 1 reaches max_attempts=3; the 4th is blocked with 429.
+        third = client.post("/login", data={"email": user.email, "password": "mal"}, headers=ip1)
+        fourth = client.post("/login", data={"email": user.email, "password": "mal"}, headers=ip1)
+
+    assert third.status_code == 400
+    assert fourth.status_code == 429
+
+
+def test_rate_limiter_uses_real_client_ip_behind_trusted_proxy(db_session, mailbox, user):
+    """Different visitors behind the same reverse proxy have independent IP buckets."""
+    settings = get_settings().model_copy(update={"login_max_attempts": 2})
+    app = create_app(settings, enforce_csrf=False)
     override_dependencies(app, db_session, mailbox, settings=settings)
 
     with TestClient(app, follow_redirects=False) as client:
-        client.post("/login", data={"email": user.email, "password": "no es"})
-        client.post("/login", data={"email": user.email, "password": "tampoco"})
-        assert (
-            client.post("/login", data={"email": user.email, "password": PASSWORD}).status_code
-            == 303
+        visitor_a = {"X-Forwarded-For": "198.51.100.1"}
+        visitor_b = {"X-Forwarded-For": "198.51.100.2"}
+        for i in range(2):
+            client.post(
+                "/login",
+                data={"email": f"nadie-{i}@example.com", "password": "mal"},
+                headers=visitor_a,
+            )
+        blocked_a = client.post(
+            "/login",
+            data={"email": "otro@example.com", "password": "mal"},
+            headers=visitor_a,
+        )
+        allowed_b = client.post(
+            "/login",
+            data={"email": user.email, "password": PASSWORD},
+            headers=visitor_b,
         )
 
-        client.post("/logout")
-        for _ in range(2):
-            again = client.post("/login", data={"email": user.email, "password": "no es"})
+    assert blocked_a.status_code == 429
+    assert allowed_b.status_code == 303
 
-    # Two more failures after a success: still under the limit, still answering.
-    assert again.status_code == 400
+
+def test_csrf_token_rotates_on_login_and_logout(strict_client, user):
+    pre_login_token = token_from(strict_client)
+    strict_client.get("/login")
+    initial_cookie = strict_client.cookies.get(CSRF_COOKIE_NAME)
+
+    login_res = strict_client.post(
+        "/login",
+        data={"email": user.email, "password": PASSWORD, "csrf_token": pre_login_token},
+    )
+    assert login_res.status_code == 303
+    post_login_cookie = strict_client.cookies.get(CSRF_COOKIE_NAME)
+    assert post_login_cookie and post_login_cookie != initial_cookie
+
+    logout_res = strict_client.post(
+        "/logout",
+        data={"csrf_token": post_login_cookie},
+    )
+    assert logout_res.status_code == 303
+    post_logout_cookie = strict_client.cookies.get(CSRF_COOKIE_NAME)
+    assert post_logout_cookie and post_logout_cookie != post_login_cookie
+
+
+def test_access_log_redacts_password_reset_token_and_logs_500s(db_session, mailbox, caplog):
+    app = create_app(enforce_csrf=False)
+    override_dependencies(app, db_session, mailbox)
+
+    @app.get("/explorar-500")
+    def boom() -> None:
+        raise RuntimeError("boom")
+
+    with (
+        TestClient(app, raise_server_exceptions=False) as lenient,
+        caplog.at_level(logging.INFO, logger="app.access"),
+    ):
+        lenient.get("/reset-password/secreto-super-sensible-123")
+        lenient.get("/explorar-500")
+
+    access_records = [r for r in caplog.records if r.name == "app.access"]
+    paths_and_status = [(r.path, r.status) for r in access_records]
+    assert ("/reset-password/[REDACTED]", 400) in paths_and_status
+    assert ("/explorar-500", 500) in paths_and_status
+    assert all("secreto-super-sensible-123" not in r.getMessage() for r in access_records)
 
 
 def test_reset_requests_are_limited_so_an_inbox_cannot_be_flooded(db_session, mailbox, user):
@@ -347,7 +450,7 @@ def test_reset_requests_are_limited_so_an_inbox_cannot_be_flooded(db_session, ma
 
     with TestClient(app, follow_redirects=False) as client:
         for _ in range(2):
-            assert client.post("/forgot-password", data={"email": user.email}).status_code == 200
+            assert client.post("/forgot-password", data={"email": user.email}).status_code == 303
         blocked = client.post("/forgot-password", data={"email": user.email})
 
     assert blocked.status_code == 429

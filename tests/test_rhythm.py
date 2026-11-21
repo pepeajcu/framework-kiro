@@ -243,9 +243,3 @@ def test_everything_the_states_print_is_escaped() -> None:
     )
 
     assert "<script>" not in html and "&lt;script&gt;" in html
-
-
-def test_the_notes_page_uses_the_empty_state(logged_in_client) -> None:  # type: ignore[no-untyped-def]
-    page = logged_in_client.get("/notes").text
-
-    assert "Aún no tienes notas" in page and "border-dashed" in page

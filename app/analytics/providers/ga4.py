@@ -52,5 +52,15 @@ class Ga4AnalyticsSender:
                 timeout=self._timeout,
             )
             response.raise_for_status()
-        except httpx2.HTTPError:
-            logger.warning("GA4 Measurement Protocol call failed", exc_info=True)
+        except httpx2.HTTPStatusError as exc:
+            # Never log `exc` or `exc_info=True`: the exception message includes
+            # the request URL, which carries `api_secret` in the query string.
+            logger.warning(
+                "GA4 Measurement Protocol call failed",
+                extra={"status": exc.response.status_code, "error_type": type(exc).__name__},
+            )
+        except httpx2.HTTPError as exc:
+            logger.warning(
+                "GA4 Measurement Protocol call failed",
+                extra={"error_type": type(exc).__name__},
+            )

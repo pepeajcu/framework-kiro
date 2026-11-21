@@ -12,12 +12,26 @@ import logging
 from functools import lru_cache
 
 from app.config import EmailProvider, Settings, get_settings
-from app.emails.base import EmailSender
+from app.emails.base import EmailMessage, EmailSender
 from app.emails.providers.console import ConsoleEmailSender
 from app.emails.providers.resend import ResendEmailSender
 from app.emails.providers.smtp import SmtpEmailSender
+from app.exceptions import EmailDeliveryError
 
 logger = logging.getLogger(__name__)
+
+
+def deliver_email(emailer: EmailSender, message: EmailMessage) -> bool:
+    """Deliver a message and log failures without crashing the request or task."""
+    try:
+        emailer.send(message)
+    except EmailDeliveryError as exc:
+        logger.error(
+            "Transactional email delivery failed",
+            extra={"error_type": type(exc).__name__, "subject": message.subject},
+        )
+        return False
+    return True
 
 
 def _warn_if_unusable(settings: Settings) -> None:

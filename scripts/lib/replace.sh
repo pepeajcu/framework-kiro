@@ -47,6 +47,21 @@ readonly KIRO_FORBIDDEN_PREFIXES=(
   "migrations/"
 )
 
+# Ejecuta Python usando el intérprete validado por preflight (o uv run --no-project
+# si python3 del sistema no tiene >=3.12 / tomllib).
+replace::python() {
+  if [[ -n ${KIRO_PYTHON:-} ]]; then
+    # shellcheck disable=SC2086
+    $KIRO_PYTHON "$@"
+  elif command -v python3 >/dev/null 2>&1 && python3 -c "import sys, tomllib; sys.exit(0 if (3, 12) <= sys.version_info < (3, 15) else 1)" 2>/dev/null; then
+    python3 "$@"
+  elif command -v uv >/dev/null 2>&1; then
+    uv run --no-project --python ">=3.12,<3.15" python "$@"
+  else
+    python3 "$@"
+  fi
+}
+
 # Comprueba que la lista blanca no invade territorio prohibido.
 replace::assert_whitelist_safe() {
   local file prefix
@@ -77,7 +92,7 @@ replace::apply() {
   fi
 
   # Sustitución literal en Python: sin regex, sin escapado, sin sorpresas.
-  KIRO_FILES="$(printf '%s\n' "${existing[@]}")" python3 - <<'PY'
+  KIRO_FILES="$(printf '%s\n' "${existing[@]}")" replace::python - <<'PY'
 import os
 import pathlib
 
@@ -121,7 +136,7 @@ PY
 replace::pyproject() {
   [[ -f pyproject.toml ]] || return 0
 
-  python3 - <<'TOMLEDIT'
+  replace::python - <<'TOMLEDIT'
 import os
 import pathlib
 import re

@@ -45,16 +45,18 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
 # ---------------------------------------------------------------------------
-# assets — compila el CSS
+# assets — sincroniza design.toml en input.css y compila el CSS
 #
 # En su propia etapa para que el binario de Tailwind y los fuentes de CSS no
-# acaben en la imagen final: solo viaja el app.css resultante.
+# acaben en la imagen final: solo viajan los estáticos compilados.
 # ---------------------------------------------------------------------------
 FROM deps-dev AS assets
 
-COPY app/static ./app/static
-COPY app/templates ./app/templates
-RUN tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
+COPY design.toml ./design.toml
+COPY app ./app
+COPY scripts ./scripts
+RUN python -m scripts.design build \
+    && tailwindcss -i app/static/css/input.css -o app/static/css/app.css --minify
 
 # ---------------------------------------------------------------------------
 # development — recarga en caliente; el código se monta como volumen
@@ -88,10 +90,14 @@ COPY --chown=app:app design.toml ./design.toml
 # scripts/ viaja a producción para poder correr `python -m scripts.seed` como
 # comando previo al despliegue, igual que las migraciones. Son unos pocos KB.
 COPY --chown=app:app scripts ./scripts
-COPY --from=assets --chown=app:app /srv/app/static/css/app.css ./app/static/css/app.css
+COPY --from=assets --chown=app:app /srv/app/static ./app/static
 
 USER app
 EXPOSE 8000
+
+# Redes privadas de Docker/Coolify/Traefik/Nginx confiables para X-Forwarded-For.
+# Sobrescribible como variable de entorno en el panel de despliegue.
+ENV FORWARDED_ALLOW_IPS="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
 # Sin curl en la imagen slim: se usa el propio Python, que ya está.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
@@ -100,4 +106,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Un solo proceso por contenedor: escalar es responsabilidad del orquestador,
 # que es quien sabe cuánta CPU hay. Varios workers dentro de un contenedor
 # esconden el uso real de recursos al panel de despliegue.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]

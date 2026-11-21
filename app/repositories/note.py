@@ -19,7 +19,12 @@ class NoteRepository(BaseRepository[Note]):
 
     model = Note
 
-    def list_for_user(self, user_id: uuid.UUID) -> Sequence[Note]:
+    def list_for_user(self, user_id: uuid.UUID, *, limit: int = 100) -> Sequence[Note]:
         """A user's notes, newest first."""
-        stmt = select(Note).where(Note.user_id == user_id).order_by(Note.created_at.desc())
+        stmt = (
+            select(Note)
+            .where(Note.user_id == user_id)
+            .order_by(Note.created_at.desc())
+            .limit(limit)
+        )
         return self.session.scalars(stmt).all()

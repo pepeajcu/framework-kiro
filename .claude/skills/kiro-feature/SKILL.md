@@ -320,7 +320,45 @@ def test_provider_list_renders(client, db_session):
     assert "Flores GT" in response.text
 ```
 
-## 9. Finish
+## 10. Authentication, Security & Transactional Email
+
+### Authentication dependencies (`app/deps.py`)
+
+```python
+from typing import Annotated
+from fastapi import Depends
+from app.deps import CurrentUser, OptionalUser, require_role
+from app.models.user import User
+
+AdminUser = Annotated[User, Depends(require_role("admin"))]
+```
+
+- `OptionalUser`: public page, resolves session cookie so header shows logged-in user.
+- `CurrentUser`: private page, redirects anonymous visitors (`303`) to `/login?next=...` (or `204` + `HX-Redirect` for HTMX).
+- `require_role("admin")`: returns `403` page if logged in without the role.
+- Never hash passwords or mint tokens by hand: use `app/security.py`.
+- Never query `users` outside `UserRepository` (it normalises email case/whitespace).
+- Changing a password (`AuthService.set_password`) revokes every session and reset link.
+- `set_session_cookie` and `clear_session_cookie` automatically rotate the CSRF cookie.
+
+### Transactional email (`app/emails/`)
+
+Inject `Emailer` from `app.deps`, render a template from `app/templates/emails/<name>.{html,txt}`, and send off the request thread via `BackgroundTasks` + `deliver_email`:
+
+```python
+from fastapi import BackgroundTasks
+from app.deps import Emailer
+from app.emails import deliver_email, render_email
+
+
+def notify(background_tasks: BackgroundTasks, emailer: Emailer, address: str) -> None:
+    msg = render_email("password_reset", to=address, reset_url=url, expires_in_minutes=30)
+    background_tasks.add_task(deliver_email, emailer, msg)
+```
+
+Each email requires both `<name>.html` (with `{% block subject %}`) and `<name>.txt`.
+
+## 11. Finish
 
 ```bash
 make check

@@ -62,5 +62,15 @@ class MetaAnalyticsSender:
                 timeout=self._timeout,
             )
             response.raise_for_status()
-        except httpx2.HTTPError:
-            logger.warning("Meta Conversions API call failed", exc_info=True)
+        except httpx2.HTTPStatusError as exc:
+            # Never log `exc` or `exc_info=True`: the exception message includes
+            # the request URL, which carries `access_token` in the query string.
+            logger.warning(
+                "Meta Conversions API call failed",
+                extra={"status": exc.response.status_code, "error_type": type(exc).__name__},
+            )
+        except httpx2.HTTPError as exc:
+            logger.warning(
+                "Meta Conversions API call failed",
+                extra={"error_type": type(exc).__name__},
+            )

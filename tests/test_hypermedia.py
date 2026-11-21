@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from pathlib import Path
 
 import pytest
@@ -17,10 +18,10 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
 
+from app.exceptions import PermissionDeniedError
 from app.hypermedia import toast_response
 from app.main import create_app
-from app.repositories.note import NoteRepository
-from tests.conftest import PASSWORD, override_dependencies
+from tests.conftest import override_dependencies
 
 HTMX = {"HX-Request": "true"}
 HTMX_CONFIG = re.compile(r"""<meta name="htmx-config" content='(.*?)'>""", re.DOTALL)
@@ -77,19 +78,32 @@ def test_calls_that_swap_the_whole_body_still_get_a_page(client, headers):
     assert_is_a_page(response, status=404)
 
 
-def test_a_forbidden_htmx_call_is_a_toast_with_the_same_status(logged_in_client, db_session, auth):
-    other = auth.register(email="otra@example.com", password=PASSWORD)
-    note = NoteRepository(db_session).create(user_id=other.id, title="Ajena", body="no tocar")
-    db_session.flush()
+@pytest.fixture
+def probe_client(db_session, mailbox):
+    """App with small probe routes for 403, UUID validation (400), and method mismatch (405)."""
+    app = create_app(enforce_csrf=False)
+    override_dependencies(app, db_session, mailbox)
 
-    response = logged_in_client.delete(f"/notes/{note.id}", headers=HTMX)
+    @app.delete("/_probe/items/{item_id}")
+    def delete_item(item_id: uuid.UUID, forbid: bool = False) -> HTMLResponse:
+        if forbid:
+            raise PermissionDeniedError("not yours")
+        return HTMLResponse("")
+
+    with TestClient(app, follow_redirects=False) as test_client:
+        yield test_client
+
+
+def test_a_forbidden_htmx_call_is_a_toast_with_the_same_status(probe_client):
+    item_id = uuid.uuid4()
+
+    response = probe_client.delete(f"/_probe/items/{item_id}?forbid=true", headers=HTMX)
 
     assert_is_a_toast(response, status=403, title="Sin permiso")
-    assert NoteRepository(db_session).get(note.id) is not None
 
 
-def test_a_malformed_id_is_a_400_page_not_fastapis_json(logged_in_client):
-    response = logged_in_client.delete("/notes/no-es-un-uuid")
+def test_a_malformed_id_is_a_400_page_not_fastapis_json(probe_client):
+    response = probe_client.delete("/_probe/items/no-es-un-uuid")
 
     assert_is_a_page(response, status=400)
     assert response.headers["content-type"].startswith("text/html")
@@ -97,8 +111,8 @@ def test_a_malformed_id_is_a_400_page_not_fastapis_json(logged_in_client):
     assert "detail" not in response.text
 
 
-def test_a_malformed_id_is_a_400_toast_for_htmx(logged_in_client):
-    response = logged_in_client.delete("/notes/no-es-un-uuid", headers=HTMX)
+def test_a_malformed_id_is_a_400_toast_for_htmx(probe_client):
+    response = probe_client.delete("/_probe/items/no-es-un-uuid", headers=HTMX)
 
     assert_is_a_toast(response, status=400, title="Solicitud no válida")
 
@@ -137,8 +151,8 @@ def test_an_unhandled_error_is_a_500_toast_that_carries_the_reference(db_session
     assert reference != toast.headers["X-Request-ID"]
 
 
-def test_a_method_the_route_does_not_accept_is_a_page_with_allow_not_json(logged_in_client):
-    response = logged_in_client.get("/notes/3f6b2c1e-0000-4000-8000-000000000000")
+def test_a_method_the_route_does_not_accept_is_a_page_with_allow_not_json(probe_client):
+    response = probe_client.get("/_probe/items/3f6b2c1e-0000-4000-8000-000000000000")
 
     assert_is_a_page(response, status=405)
     assert response.headers["content-type"].startswith("text/html")
@@ -146,8 +160,8 @@ def test_a_method_the_route_does_not_accept_is_a_page_with_allow_not_json(logged
     assert "Acción no permitida" in response.text and "detail" not in response.text
 
 
-def test_a_method_the_route_does_not_accept_is_a_toast_for_htmx(logged_in_client):
-    response = logged_in_client.get("/notes/3f6b2c1e-0000-4000-8000-000000000000", headers=HTMX)
+def test_a_method_the_route_does_not_accept_is_a_toast_for_htmx(probe_client):
+    response = probe_client.get("/_probe/items/3f6b2c1e-0000-4000-8000-000000000000", headers=HTMX)
 
     assert_is_a_toast(response, status=405, title="Acción no permitida")
 
@@ -278,3 +292,23 @@ def test_the_messages_are_the_ones_the_docs_promise():
 
     for message in ("Sin conexión", "La petición tardó demasiado", "El servidor no responde"):
         assert message in code
+
+
+UI_SCRIPT = Path(__file__).resolve().parent.parent / "app/static/js/kiro-ui.js"
+
+
+def test_the_page_loads_the_declarative_ui_helper_deferred(client):
+    html = client.get("/").text
+
+    assert html.count("js/kiro-ui.js") == 1
+    assert re.search(r'<script src="/static/js/kiro-ui\.js\?v=\d+" defer></script>', html)
+
+
+def test_kiro_ui_script_supports_declarative_attributes_safely():
+    source = UI_SCRIPT.read_text(encoding="utf-8")
+    code = re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.DOTALL)
+
+    for attr in ("data-ui-toggle", "data-ui-tabs", "data-ui-tab", "data-ui-open", "data-ui-close"):
+        assert attr in code
+    assert "innerHTML" not in code
+    assert not re.search(r"\b(eval|document\.write)\b", code)

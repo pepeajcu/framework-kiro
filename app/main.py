@@ -53,6 +53,7 @@ def create_app(settings: Settings | None = None, *, enforce_csrf: bool = True) -
         # than by remembering to add something to it.
         dependencies=[Depends(csrf_guard(enforce=enforce_csrf))],
     )
+    app.state.settings = settings
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
