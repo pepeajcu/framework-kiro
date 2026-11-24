@@ -46,6 +46,9 @@ Un proyecto generado en Windows 11 fallaba seis tests y dejaba alembic colgado. 
   página de códigos ANSI y el `✓` final salía como `âœ“`; ahora va con `printf`, que además
   interpreta `\033` en todas las shells.
 - `[SEGURO]` **`setup.sh` escribe con LF** los archivos que personaliza (`scripts/lib/replace.sh`).
+- `[SEGURO]` **`setup.sh` pide Enter también al terminar bien**: lanzado con doble clic, la ventana
+  se cerraba sola y se perdía el resumen final con la contraseña del administrador. No espera con
+  `--non-interactive` ni en salidas como `--help`.
 
 #### Añadido
 

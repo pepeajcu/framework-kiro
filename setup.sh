@@ -36,12 +36,16 @@ readonly MARKER_FILE=".kiro-setup-done"
 # configurar y necesita saber cómo salir de ahí.
 MUTATED=false
 
-# Se ejecuta ante cualquier salida distinta de cero, incluidas las de log::die.
-on_failure() {
-  local code=$?
-  [[ $code -eq 0 ]] && return 0
+# Se pone a true al llegar al resumen final. Distingue "terminó la instalación"
+# de otras salidas limpias (--help, setup ya hecho) que no deben pedir Enter.
+FINISHED=false
 
-  if [[ $MUTATED == true ]]; then
+# Se ejecuta en toda salida: avisa si se quedó a medias y, si hay alguien
+# delante de la terminal, espera antes de cerrarla.
+on_exit() {
+  local code=$?
+
+  if [[ $code -ne 0 && $MUTATED == true ]]; then
     printf '\n%s%s  El instalador se detuvo a mitad.%s\n' "$C_BOLD" "$C_YELLOW" "$C_RESET" >&2
     printf '  El proyecto quedó configurado a medias. Para volver a empezar:\n\n' >&2
     printf '    rm -f .env .kiro-setup-done\n' >&2
@@ -53,14 +57,16 @@ on_failure() {
   fi
 
   # Lanzado con doble clic desde el explorador de archivos, la ventana se cierra
-  # en cuanto el script termina y el error no llega a leerse: el síntoma que
-  # recibes es "se cierra solo", sin ninguna pista de la causa.
+  # en cuanto el script termina. Si falló, el error no llega a leerse; si salió
+  # bien, se pierde el resumen final con la contraseña del administrador. Por eso
+  # se espera en los dos casos (salvo con --non-interactive).
+  [[ $code -ne 0 || $FINISHED == true ]] || return 0
   if [[ -t 0 && ${NON_INTERACTIVE:-false} != true ]]; then
     printf '  %sPulsa Enter para cerrar.%s ' "$C_DIM" "$C_RESET" >&2
     read -r _ || true
   fi
 }
-trap on_failure EXIT
+trap on_exit EXIT
 
 # Archivos y carpetas que pertenecen al framework, no a los proyectos que
 # nacen de él. Se ofrecen para borrar al final del setup.
@@ -729,6 +735,7 @@ main() {
   setup_git
   write_marker
   final_message
+  FINISHED=true
 }
 
 main "$@"
