@@ -13,7 +13,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
 from app.design_engine import patterns
@@ -178,12 +177,15 @@ def _check_header(contract: DesignContract, paths: Paths) -> list[Finding]:
     return [_ok(f"cabecera: {name}")]
 
 
-def _project_templates(paths: Paths) -> Iterator[tuple[Path, str]]:
+def _project_templates(paths: Paths) -> Iterator[tuple[str, str]]:
     """`(relative path, text without comments)` for each template of the project.
 
     Skips what is not the project's own markup: the vendored Basecoat macros, the
     emails, and `/_design`, which shows every value on purpose. A comment that
     documents `data-motion="pin"` or a "badge + title + cards" is not a use of it.
+
+    The path is POSIX (`pages/home.html`) on every OS: it ends up in messages that
+    name the file, and on Windows a `Path` would print `pages\\home.html`.
     """
     if not paths.templates.is_dir():
         return
@@ -191,7 +193,7 @@ def _project_templates(paths: Paths) -> Iterator[tuple[Path, str]]:
         relative = path.relative_to(paths.templates)
         if relative.parts[0] in {"basecoat", "emails"} or relative.as_posix() == SHOWCASE_TEMPLATE:
             continue
-        yield relative, patterns.strip_comments(path.read_text(encoding="utf-8"))
+        yield relative.as_posix(), patterns.strip_comments(path.read_text(encoding="utf-8"))
 
 
 #: Skills that give design direction of their own. Installed next to `kiro-design` they
@@ -272,9 +274,9 @@ def _check_templates(contract: DesignContract, paths: Paths) -> list[Finding]:
                 )
             )
         for value in _DATA_MOTION.findall(text):
-            if (str(relative), value) in seen:
+            if (relative, value) in seen:
                 continue
-            seen.add((str(relative), value))
+            seen.add((relative, value))
             needed = VOCABULARY.get(value)
             if needed is None:
                 findings.append(

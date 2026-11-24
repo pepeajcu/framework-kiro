@@ -26,7 +26,7 @@ def build(tmp_path: Path, files: dict[str, str]) -> Path:
     for rel, content in files.items():
         target = tmp_path / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(textwrap.dedent(content))
+        target.write_text(textwrap.dedent(content), encoding="utf-8")
     return tmp_path
 
 

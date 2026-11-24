@@ -12,6 +12,11 @@
 #
 set -euo pipefail
 
+# Python en modo UTF-8 para todo lo que lance el instalador. En Windows, sin
+# esto, lee y escribe en cp1252: la salida sale con '�' y cualquier archivo con
+# acentos puede corromperse. En Linux y macOS no cambia nada.
+export PYTHONUTF8=1
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 cd "$SCRIPT_DIR"
 
@@ -64,7 +69,26 @@ readonly FRAMEWORK_ONLY=(
   ".github/workflows/e2e-setup.yml"
   "setup.sh"
   "scripts/lib"
+  # Documentación interna del desarrollo de Kiro: historial, análisis y planes.
+  # El README.md del proyecto sale de docs/framework/project-README.md, así que
+  # la versión en español del README del framework queda huérfana; y
+  # `make upgrade` lee el CHANGELOG de upstream, no el local.
+  "CHANGELOG.md"
+  "README.es.md"
+  "Auditoría Unificada y Hoja de Ruta — Kiro Framework.md"
+  "docs/analisis-diseno.md"
+  "docs/analisis-glm-5-3.md"
+  "docs/analisis-minimaxm3.md"
+  "docs/optimizacion"
+  "docs/plan-diseno"
+  "docs/plan-diseno.md"
 )
+
+# Tamaño a partir del cual un archivo no entra en el commit inicial. El framework
+# no tiene ningún archivo de más de 400 KB: algo por encima de esto es casi
+# seguro un instalador, un .zip o un vídeo que estaba en la carpeta por accidente,
+# y una vez en el historial cuesta mucho sacarlo.
+readonly MAX_COMMIT_FILE_BYTES=$((5 * 1024 * 1024))
 
 # --- Valores (por defecto vacíos; los llenan las flags o los prompts) -------
 PROJECT_NAME=""
@@ -383,7 +407,9 @@ BASE_URL=$BASE_URL
 SECRET_KEY=$secret_key
 
 # --- Base de datos ---
-# Desde el host (migraciones, tests): localhost.
+# Desde el host (migraciones, tests): 127.0.0.1, no 'localhost'. En Windows
+# 'localhost' prueba antes IPv6 (::1), donde Docker no escucha, y la conexión
+# se queda colgada sin error: alembic y los tests parecen congelados.
 # Desde el contenedor de la app: compose sobreescribe el host por 'db'.
 POSTGRES_USER=$DB_USER
 POSTGRES_PASSWORD=$db_password
@@ -394,7 +420,7 @@ POSTGRES_DB=$DB_NAME
 POSTGRES_PORT=$DB_PORT
 APP_PORT=$APP_PORT
 
-DATABASE_URL=postgresql+psycopg://$DB_USER:$db_password@localhost:$DB_PORT/$DB_NAME
+DATABASE_URL=postgresql+psycopg://$DB_USER:$db_password@127.0.0.1:$DB_PORT/$DB_NAME
 
 # --- Autenticación ---
 # Duración de la cookie de sesión.
@@ -541,6 +567,28 @@ cleanup_framework_files() {
   log::ok "el proyecto ya no arrastra el andamiaje del framework"
 }
 
+# Saca del índice los archivos de más de MAX_COMMIT_FILE_BYTES. Se quedan en la
+# carpeta, sin seguimiento, para que el usuario decida: borrarlos, añadirlos a
+# .gitignore o, si de verdad van en el repo, hacer él el commit.
+unstage_large_files() {
+  local file size found=false
+  while IFS= read -r -d '' file; do
+    [[ -f $file ]] || continue
+    size=$(wc -c <"$file" | tr -d ' ')
+    ((size > MAX_COMMIT_FILE_BYTES)) || continue
+    if [[ $found == false ]]; then
+      log::warn "fuera del commit inicial, por pesar más de $((MAX_COMMIT_FILE_BYTES / 1024 / 1024)) MB:"
+      found=true
+    fi
+    git rm --cached -q -- "$file"
+    log::info "· $file ($((size / 1024 / 1024)) MB)"
+  done < <(git diff --cached --name-only -z)
+  if [[ $found == true ]]; then
+    log::hint "siguen en la carpeta: bórralos o añádelos a .gitignore"
+  fi
+  return 0
+}
+
 setup_git() {
   log::section "Configurando git"
   case $GIT_MODE in
@@ -551,6 +599,7 @@ setup_git() {
       rm -rf .git
       git init -q
       git add -A
+      unstage_large_files
       git -c user.name="${AUTHOR:-Kiro}" -c user.email="setup@kiro.local" \
         commit -q -m "chore: proyecto inicial desde Kiro" || true
       log::ok "historial nuevo, sin vínculo con el framework"

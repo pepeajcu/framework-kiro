@@ -312,7 +312,14 @@ def run_skillui(
         command += ["--mode", "ultra"]
     try:
         result = run(
-            command, capture_output=True, text=True, timeout=SKILLUI_TIMEOUT, check=False, cwd=out
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=SKILLUI_TIMEOUT,
+            check=False,
+            cwd=out,
         )
     except subprocess.TimeoutExpired as exc:
         raise DesignError(f"skillui tardó más de {SKILLUI_TIMEOUT:g} s") from exc

@@ -139,7 +139,7 @@ def test_tailwind_emits_the_rhythm_utilities_only_when_a_template_uses_them(tmp_
     shutil.copy(REPO / "app/static/css/motion.css", css_dir / "motion.css")
     theme = css_dir / "vendor/basecoat"
     theme.mkdir(parents=True)
-    (theme / "basecoat-vega.css").write_text("/* vega */")
+    (theme / "basecoat-vega.css").write_text("/* vega */", encoding="utf-8")
     source = (REPO / "app/static/css/input.css").read_text(encoding="utf-8")
     (css_dir / "input.css").write_text(
         compile_contract(with_density(8), source).css, encoding="utf-8"
@@ -148,7 +148,8 @@ def test_tailwind_emits_the_rhythm_utilities_only_when_a_template_uses_them(tmp_
     result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "pytailwindcss", "-i", str(css_dir / "input.css"),
          "-o", str(css_dir / "out.css")],
-        capture_output=True, text=True, check=False, cwd=tmp_path,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        check=False, cwd=tmp_path,
     )  # fmt: skip
     assert result.returncode == 0, result.stderr[-600:]
 
@@ -168,7 +169,7 @@ def _project(tmp_path: Path, density: int, dial: str) -> Paths:
     shutil.copy(REPO / "app/static/css/input.css", paths.css)
     theme = paths.basecoat
     theme.mkdir(parents=True)
-    (theme / "basecoat-vega.css").write_text("/* vega */")
+    (theme / "basecoat-vega.css").write_text("/* vega */", encoding="utf-8")
     shutil.copytree(REPO / "app/templates/partials/headers", paths.headers)
     (paths.static / "js").mkdir()
     paths.contract.write_text(dump_contract(with_density(density)), encoding="utf-8")

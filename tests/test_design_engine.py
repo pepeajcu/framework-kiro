@@ -551,6 +551,10 @@ def test_a_woff2_header_is_validated() -> None:
         (make_woff2(MAX_FONT_BYTES + 10), "pesa"),
         (make_woff2(2000, tables=0), "tablas"),
     ],
+    # Short ids on purpose: by default pytest builds the id from the bytes, and the
+    # oversized font makes it megabytes long. On Windows that id goes into
+    # PYTEST_CURRENT_TEST and breaks the 32 767-character limit of an env var.
+    ids=["html", "truncated", "tiny", "oversized", "no-tables"],
 )
 def test_bad_font_files_are_refused(data: bytes, fragment: str) -> None:
     with pytest.raises(DesignError, match=fragment):
@@ -689,7 +693,7 @@ def test_low_levels_load_nothing(tmp_path: Path) -> None:
 def test_scripts_are_loaded_only_when_they_exist(tmp_path: Path) -> None:
     js = tmp_path / "js"
     (js / "vendor").mkdir(parents=True)
-    (js / "motion.js").write_text("//")
+    (js / "motion.js").write_text("//", encoding="utf-8")
 
     # Level 8 wants Motion and its adapter; neither is there: core only.
     assert motion.scripts_for(8, tmp_path) == (("js/motion.js",), ())
@@ -698,8 +702,8 @@ def test_scripts_are_loaded_only_when_they_exist(tmp_path: Path) -> None:
         "js/vendor/motion.min.js",
     }
 
-    (js / "motion-lib.js").write_text("//")
-    (js / "vendor" / "motion.min.js").write_text("//")
+    (js / "motion-lib.js").write_text("//", encoding="utf-8")
+    (js / "vendor" / "motion.min.js").write_text("//", encoding="utf-8")
     _, body = motion.scripts_for(8, tmp_path)
     # The library goes before its adapter.
     assert body == ("js/vendor/motion.min.js", "js/motion-lib.js")
@@ -709,7 +713,7 @@ def test_scripts_are_loaded_only_when_they_exist(tmp_path: Path) -> None:
 def test_an_adapter_is_never_loaded_without_its_library(tmp_path: Path) -> None:
     (tmp_path / "js" / "vendor").mkdir(parents=True)
     for name in ("motion.js", "motion-gsap.js", "vendor/gsap.min.js"):  # no ScrollTrigger
-        (tmp_path / "js" / name).write_text("//")
+        (tmp_path / "js" / name).write_text("//", encoding="utf-8")
 
     assert motion.scripts_for(9, tmp_path)[1] == ()
 

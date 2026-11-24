@@ -79,7 +79,7 @@ def test_a_hand_edit_to_a_vendored_file_is_noticed(tmp_path: Path) -> None:
     for relative in ("scripts/core.py", "LICENSE", "vendor.lock.json"):
         (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / relative).write_bytes((SKILL / "uupm" / relative).read_bytes())
-    (tmp_path / "scripts/core.py").write_text("# editado\n")
+    (tmp_path / "scripts/core.py").write_text("# editado\n", encoding="utf-8")
 
     problems = vendor.verify(tmp_path)
 

@@ -409,8 +409,8 @@ def test_tailwind_accepts_the_compiled_kit_and_emits_the_system_dark_variant(
     shutil.copy(REPO / "app/static/css/motion.css", css_dir / "motion.css")
     theme = css_dir / "vendor/basecoat"
     theme.mkdir(parents=True)
-    (theme / "basecoat-vega.css").write_text("/* vega */")
-    (theme / "basecoat-maia.css").write_text("/* maia */")
+    (theme / "basecoat-vega.css").write_text("/* vega */", encoding="utf-8")
+    (theme / "basecoat-maia.css").write_text("/* maia */", encoding="utf-8")
 
     source = (REPO / "app/static/css/input.css").read_text(encoding="utf-8")
     (css_dir / "input.css").write_text(compile_contract(IOS, source).css, encoding="utf-8")
@@ -427,6 +427,8 @@ def test_tailwind_accepts_the_compiled_kit_and_emits_the_system_dark_variant(
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
         cwd=tmp_path,
     )

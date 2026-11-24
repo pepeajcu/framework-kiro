@@ -200,13 +200,15 @@ def test_build_with_a_failing_palette_writes_nothing(project: Paths) -> None:
 
 
 def test_a_project_can_keep_its_own_css_next_to_the_blocks(project: Paths) -> None:
-    project.css.write_text(project.css.read_text() + "\n.mi-clase { color: red; }\n")
+    project.css.write_text(
+        project.css.read_text(encoding="utf-8") + "\n.mi-clase { color: red; }\n", encoding="utf-8"
+    )
     set_contract(project, DesignContract.model_validate({"brand": {"primary": "#0F766E"}}))
 
     design_cli.build(project)
     design_cli.build(project)
 
-    assert ".mi-clase { color: red; }" in project.css.read_text()
+    assert ".mi-clase { color: red; }" in project.css.read_text(encoding="utf-8")
 
 
 # --- init / set -------------------------------------------------------------
@@ -552,7 +554,7 @@ def test_the_notice_names_the_licence_of_what_is_installed(tmp_path: Path) -> No
         for file in library.files:
             target = tmp_path / file.dest
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("//")
+            target.write_text("//", encoding="utf-8")
 
     notice = motion_cli.render_notice(tmp_path)
 
@@ -746,7 +748,9 @@ def test_check_ignores_vendored_and_email_templates(project: Paths) -> None:
     design_cli.build(project)
     for folder in ("basecoat", "emails"):
         (project.templates / folder).mkdir(parents=True)
-        (project.templates / folder / "x.html").write_text('<i data-motion="pin"></i>')
+        (project.templates / folder / "x.html").write_text(
+            '<i data-motion="pin"></i>', encoding="utf-8"
+        )
 
     assert not any("pin" in w for w in levels(run_checks(project))["warn"])
 
@@ -768,7 +772,9 @@ def test_check_skips_the_design_showcase_that_gates_by_level_itself(project: Pat
     set_contract(project, DesignContract.model_validate({"motion": {"level": 5}}))
     design_cli.build(project)
     (project.templates / "pages").mkdir(parents=True)
-    (project.templates / "pages" / "design.html").write_text('<i data-motion="pin"></i>')
+    (project.templates / "pages" / "design.html").write_text(
+        '<i data-motion="pin"></i>', encoding="utf-8"
+    )
 
     assert not any("pin" in w for w in levels(run_checks(project))["warn"])
 
@@ -851,5 +857,5 @@ def test_the_cli_can_init_and_build_end_to_end(
     assert code == 0
     assert "estilo 'minimalista'" in out
     assert "fuente display: Newsreader" in out
-    assert parse_contract(project.contract.read_text()).basecoat.theme == "nova"
-    assert "kiro:fonts:start" in project.css.read_text()
+    assert parse_contract(project.contract.read_text(encoding="utf-8")).basecoat.theme == "nova"
+    assert "kiro:fonts:start" in project.css.read_text(encoding="utf-8")

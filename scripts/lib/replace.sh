@@ -92,6 +92,8 @@ replace::apply() {
   fi
 
   # Sustitución literal en Python: sin regex, sin escapado, sin sorpresas.
+  # Las escrituras llevan newline="\n": en Windows write_text convierte cada salto
+  # de línea en CRLF, y los archivos personalizados desentonarían con el resto.
   KIRO_FILES="$(printf '%s\n' "${existing[@]}")" replace::python - <<'PY'
 import os
 import pathlib
@@ -119,7 +121,7 @@ for name in os.environ["KIRO_FILES"].splitlines():
     for token, value in values.items():
         updated = updated.replace(token, value)
     if updated != original:
-        path.write_text(updated, encoding="utf-8")
+        path.write_text(updated, encoding="utf-8", newline="\n")
         print(f"    · {name}")
 PY
 }
@@ -184,7 +186,7 @@ try:
 except tomllib.TOMLDecodeError as exc:
     raise SystemExit(f"error: la personalización produjo un TOML inválido: {exc}") from exc
 
-path.write_text(text, encoding="utf-8")
+path.write_text(text, encoding="utf-8", newline="\n")  # LF también en Windows
 print("    · pyproject.toml")
 TOMLEDIT
 }

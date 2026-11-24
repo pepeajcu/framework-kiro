@@ -238,7 +238,7 @@ def project(tmp_path: Path) -> Paths:
     (paths.static / "css" / "vendor" / "basecoat").mkdir(parents=True)
     paths.css.write_text(pristine_css(PROJECT_ROOT / "app/static/css/input.css"), encoding="utf-8")
     for theme in ("vega", "nova", "maia", "lyra", "mira", "luma", "sera", "rhea"):
-        (paths.basecoat / f"basecoat-{theme}.css").write_text("/* theme */")
+        (paths.basecoat / f"basecoat-{theme}.css").write_text("/* theme */", encoding="utf-8")
     shutil.copytree(PROJECT_ROOT / "app/templates/partials/headers", paths.headers)
     (paths.static / "js").mkdir(parents=True)
     for name in ("motion.js", "motion-lib.js", "motion-gsap.js"):

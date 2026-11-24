@@ -8,6 +8,18 @@
 APP_PORT ?= $(shell sed -n 's/^APP_PORT=//p' .env 2>/dev/null | head -1)
 APP_PORT := $(or $(APP_PORT),8000)
 
+# Python en modo UTF-8 en todos los comandos. En Windows, open() y read_text()
+# sin encoding usan la página de códigos ANSI (cp1252), no UTF-8: un archivo con
+# "á" o "—" se lee corrupto o revienta con UnicodeDecodeError. El código ya pasa
+# encoding="utf-8" explícito; esto cubre lo que se escape. En Linux y macOS no
+# cambia nada.
+export PYTHONUTF8 := 1
+
+# Las recetas van en ASCII: make en Windows pasa el comando a sh con la página de
+# códigos ANSI y las tildes llegan rotas ("âœ“"). Para un carácter especial, usa
+# printf con su escape octal, que además interpreta \033 en todas las shells (el
+# echo de bash, el de macOS, no lo hace).
+
 .DEFAULT_GOAL := help
 .PHONY: help dev up down logs ps shell migrate revision migrations-check seed \
 	css css-watch logo brand-colors font motion design design-build design-watch design-init \
@@ -45,7 +57,7 @@ migrate:  ## Aplicar las migraciones pendientes
 	uv run alembic upgrade head
 
 revision:  ## Crear una migración desde los modelos  (make revision m="añade tabla x")
-	@test -n "$(m)" || (echo "error: falta el mensaje. Uso: make revision m=\"descripción\"" && exit 1)
+	@test -n "$(m)" || (echo "error: falta el mensaje. Uso: make revision m=\"mensaje\"" && exit 1)
 	uv run alembic revision --autogenerate -m "$(m)"
 
 migrations-check:  ## Fallar si los modelos cambiaron sin generar migración
@@ -174,8 +186,7 @@ audit:  ## Buscar vulnerabilidades conocidas en las dependencias
 check:  ## Lint + tipos + css + diseño + arquitectura + tests + migraciones. Es lo que corre CI.
 	@$(MAKE) --no-print-directory lint types css archcheck test migrations-check
 	@$(MAKE) --no-print-directory design-check allow_defaults=1
-	@echo ""
-	@echo "  \033[1;32m✓ todo en orden\033[0m"
+	@printf '\n  \033[1;32m\342\234\223 todo en orden\033[0m\n'
 
 # --- Mantenimiento ----------------------------------------------------------
 
@@ -187,7 +198,7 @@ upgrade:  ## Ver qué mejoras del framework hay disponibles (requiere remote 'up
 	@git remote get-url upstream >/dev/null 2>&1 \
 		|| (echo "error: no hay remote 'upstream'. Ver docs/upgrading.md" && exit 1)
 	@git fetch upstream --quiet
-	@echo "Cambios del framework que tu proyecto todavía no tiene:"
+	@echo "Cambios del framework pendientes en tu proyecto:"
 	@echo ""
 	@git diff --stat HEAD upstream/main -- app/ scripts/ Dockerfile compose.yml || true
 	@echo ""

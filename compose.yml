@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      # .env apunta a localhost (para migraciones y tests desde el host).
+      # .env apunta a 127.0.0.1 (para migraciones y tests desde el host).
       # Dentro de la red de compose el host es 'db'.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:

@@ -18,7 +18,12 @@ from app.templating import templates
 
 RESET_URL = "https://example.com/reset-password/tok?next=/panel&ref=mail"
 
+# `_env_file=None`: these tests build Settings by hand and must not inherit the
+# project's .env. A generated project ships EMAIL_PROVIDER=resend without a key,
+# so any production-mode Settings would fail on that before reaching the check
+# under test.
 VALID_SETTINGS = {
+    "_env_file": None,
     "secret_key": "x" * 32,
     "database_url": "postgresql+psycopg://user:pass@localhost:5432/db",
 }

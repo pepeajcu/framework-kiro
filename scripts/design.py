@@ -309,11 +309,20 @@ def run_uupm(paths: Paths, args: list[str], *, timeout: float = 60.0) -> str:
             "falta el asesor uupm (.claude/skills/kiro-design/uupm/); "
             "se trae con `uv run python -m scripts.vendor_uupm`"
         )
-    command = [sys.executable, "-I", "-c", _UUPM_RUNNER, str(scripts), *args]
+    # `-X utf8`: on Windows the child would otherwise print in the ANSI code page
+    # (cp1252) and fail on any character outside it. `-I` ignores PYTHONUTF8, so the
+    # flag has to be explicit.
+    command = [sys.executable, "-I", "-X", "utf8", "-c", _UUPM_RUNNER, str(scripts), *args]
     try:
         # Our own vendored script, no shell, a fixed interpreter: nothing to inject into.
         result = subprocess.run(  # noqa: S603
-            command, capture_output=True, text=True, timeout=timeout, check=False
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise DesignError(f"uupm tardó más de {timeout:g} s en responder") from exc

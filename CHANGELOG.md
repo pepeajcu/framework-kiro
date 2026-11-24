@@ -17,6 +17,43 @@ Siete fases (`docs/optimizacion/plan-v2.md`, ADR-0016 a ADR-0023). Las entradas 
 reciente a la más antigua. También corrige: `405` y `422` devuelven una página (o un toast)
 y no el JSON de Starlette.
 
+### Windows: instalador y suite en verde
+
+Un proyecto generado en Windows 11 fallaba seis tests y dejaba alembic colgado. Ahora
+`setup.sh` y `make check` pasan enteros en Windows con la configuración por defecto de Git.
+
+#### Corregido
+
+- `[MIGRACIÓN]` **`DATABASE_URL` apunta a `127.0.0.1`, no a `localhost`** (`setup.sh`,
+  `.env.example`). En Windows `localhost` prueba antes IPv6 (`::1`), donde Docker no escucha, y
+  psycopg se queda esperando sin error: alembic y los tests parecían congelados. En un proyecto
+  existente: cambia `localhost` por `127.0.0.1` en la `DATABASE_URL` de tu `.env`.
+- `[MIGRACIÓN]` **`.gitattributes` con `eol=lf`**. Git para Windows trae `core.autocrlf=true` y
+  convertía todo a CRLF: fallaba el candado de hashes del uupm vendorizado (`test_uupm`), además de
+  los scripts de shell en Docker y los diffs. En un proyecto existente: copia `.gitattributes` y
+  corre `git add --renormalize .`.
+- `[SEGURO]` **UTF-8 explícito** en las lecturas y escrituras de los tests y en los subprocesos de
+  `scripts/design.py` y `scripts/reference.py`; `PYTHONUTF8=1` en el `Makefile` y en `setup.sh`
+  como red. Sin eso, Windows usa cp1252 y salía `UnicodeDecodeError` o `�`.
+- `[SEGURO]` **`make design-check`** nombra las plantillas con `/` también en Windows
+  (`app/design_engine/checks.py`).
+- `[SEGURO]` **`test_bad_font_files_are_refused`** con ids cortos: el id por defecto, hecho con los
+  bytes de la fuente, superaba el límite de 32 767 caracteres de una variable de entorno.
+- `[SEGURO]` **`test_analytics.py` y `test_emails.py`** no leen el `.env` del proyecto
+  (`_env_file=None`): un proyecto recién generado trae `EMAIL_PROVIDER=resend` sin clave y la
+  validación de email saltaba antes que la comprobada.
+- `[SEGURO]` **Recetas del `Makefile` en ASCII**: en Windows make pasa el comando a sh con la
+  página de códigos ANSI y el `✓` final salía como `âœ“`; ahora va con `printf`, que además
+  interpreta `\033` en todas las shells.
+- `[SEGURO]` **`setup.sh` escribe con LF** los archivos que personaliza (`scripts/lib/replace.sh`).
+
+#### Añadido
+
+- `[SEGURO]` **`setup.sh` deja fuera del commit inicial los archivos de más de 5 MB** y los
+  nombra: un instalador o un `.zip` olvidado en la carpeta ya no entra en el historial.
+- `[SEGURO]` **`setup.sh` limpia también la documentación interna del framework**: `CHANGELOG.md`,
+  `README.es.md`, la auditoría y los análisis y planes de `docs/`.
+
 ### Cimientos: reglas comprobadas, errores de HTMX y escapado
 
 #### Añadido (después)

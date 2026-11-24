@@ -1,0 +1,25 @@
+# Finales de línea: LF siempre, también en Windows.
+#
+# Git para Windows trae core.autocrlf=true de serie y, sin este archivo, cada
+# checkout convierte los textos a CRLF. Eso rompe tres cosas a la vez:
+#   · los hashes de .claude/skills/kiro-design/uupm/vendor.lock.json (el árbol
+#     vendorizado parece "editado a mano" y falla test_uupm);
+#   · los scripts de shell que corren dentro de Docker (bash no acepta \r);
+#   · los diffs, que pasan a marcar cada línea como cambiada.
+* text=auto eol=lf
+
+# Binarios: ni conversión ni diff de texto.
+*.woff2 binary
+*.woff binary
+*.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.exe binary
