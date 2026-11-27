@@ -17,6 +17,20 @@ Siete fases (`docs/optimizacion/plan-v2.md`, ADR-0016 a ADR-0023). Las entradas 
 reciente a la más antigua. También corrige: `405` y `422` devuelven una página (o un toast)
 y no el JSON de Starlette.
 
+### Despliegue: migraciones al arrancar y guía del 502
+
+Un primer despliegue en Dokploy dio 502 por tres causas a la vez (variables sin aplicar,
+puerto del dominio equivocado, base sin migrar). Ahora la imagen deja la base lista sola.
+
+#### Cambiado
+- `[SEGURO]` `Dockerfile`: el `CMD` de producción ejecuta `alembic upgrade head` y
+  `python -m scripts.seed` antes de uvicorn (ADR-0024). Un proyecto existente lo toma
+  copiando esa línea; con varias réplicas, mantener solo uvicorn y migrar como paso previo.
+- `[SEGURO]` `docs/deploy-coolify.md`: base PostgreSQL aparte con respaldos, `DATABASE_URL`
+  con `postgresql+psycopg://`, "pulsa Deploy tras cambiar variables", puerto 8000 en cada
+  dominio, diagnóstico del 502 y permiso de escritura para carpetas de subidas.
+- `AGENTS.md`: sección "Deploying" con esas reglas para los agentes.
+
 ### Windows: instalador y suite en verde
 
 Un proyecto generado en Windows 11 fallaba seis tests y dejaba alembic colgado. Ahora

@@ -87,8 +87,8 @@ COPY --chown=app:app app ./app
 # superficie oscura y los scripts de motion (app/design_engine/runtime.py). Sin
 # él, producción se vería con los valores por defecto.
 COPY --chown=app:app design.toml ./design.toml
-# scripts/ viaja a producción para poder correr `python -m scripts.seed` como
-# comando previo al despliegue, igual que las migraciones. Son unos pocos KB.
+# scripts/ viaja a producción: el `CMD` ejecuta `python -m scripts.seed` al arrancar,
+# igual que las migraciones. Son unos pocos KB.
 COPY --chown=app:app scripts ./scripts
 COPY --from=assets --chown=app:app /srv/app/static ./app/static
 
@@ -103,7 +103,11 @@ ENV FORWARDED_ALLOW_IPS="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
 
+# Antes de servir tráfico aplica las migraciones y refresca el seed. Ambas son
+# idempotentes, así que cada despliegue deja la base al día sin pasos manuales; si fallan,
+# el contenedor no arranca y el error sale en los Logs (ADR-0024). Con más de una réplica,
+# mover la migración a un paso previo al despliegue (docs/deploy-coolify.md, §4).
 # Un solo proceso por contenedor: escalar es responsabilidad del orquestador,
 # que es quien sabe cuánta CPU hay. Varios workers dentro de un contenedor
 # esconden el uso real de recursos al panel de despliegue.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]
+CMD ["sh", "-c", "alembic upgrade head && python -m scripts.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]

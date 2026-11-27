@@ -32,3 +32,4 @@ por un motivo concreto. Si crees que una decisión debe revisarse, di **cuál** 
 | [0021](0021-referencias-externas-un-lector-y-candados.md) | Referencias externas: un lector tolerante, skillui como herramienta opcional y candados | Aceptada |
 | [0022](0022-formularios-con-memoria-y-avisos-tras-redireccion.md) | Formularios con memoria y avisos tras una redirección | Aceptada |
 | [0023](0023-densidad-compilada-y-estados.md) | Densidad compilada y los tres estados | Aceptada |
+| [0024](0024-migraciones-y-seed-al-arrancar-la-imagen.md) | Las migraciones y el seed se aplican al arrancar la imagen | Aceptada |

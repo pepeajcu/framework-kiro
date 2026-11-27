@@ -128,6 +128,23 @@ Full code examples live in `.claude/skills/kiro-feature/SKILL.md` and `.claude/s
 - **Templates, components & motion:** Pages extend `layouts/app.html` or `layouts/landing.html` (never `base.html`, J1). Use Basecoat `data-variant` / `data-size` attributes (never `btn-primary`, J4), design tokens from `design.toml` (never hardcoded colours, J3), `section-y`/`gap-rhythm`/`min-h-row` utilities, `components/states.html.jinja` for loading/empty/error states, `data-ui-*` (`kiro-ui.js`) for local tabs/toggles/drawers, and `data-motion` attributes for motion (ADR-0015). Run `make css` after editing templates.
 - **Never edit vendored files** (`app/static/css/vendor/`, `app/templates/basecoat/`, `kiro:*` blocks in `input.css`) or add Node.js/CDN scripts.
 
+## Deploying (Dokploy / Coolify)
+
+Full guide and 502 diagnosis in `docs/deploy-coolify.md`; rationale in ADR-0024.
+
+- **Two services:** the app (Dockerfile, target `production`) and a **separate** PostgreSQL
+  from the panel, with scheduled backups. Never bundle the database into the app's stack.
+- **The image migrates itself:** the production `CMD` runs `alembic upgrade head` and
+  `python -m scripts.seed` before uvicorn. Both are idempotent; keep them that way.
+- **`DATABASE_URL` must start with `postgresql+psycopg://`** and use the database service's
+  internal host, never `127.0.0.1`. `SECRET_KEY` needs 32+ characters.
+- **Env vars live in the panel, not the repo**, one per line, no quotes or comments. Changing
+  them does nothing until **Deploy** is pressed.
+- **Every domain points at port 8000.** A wrong port is a 502 even when the app is healthy.
+- **A 502 is read from the service Logs first.** The missing variable is named there.
+- **A directory the app writes to** (uploads) must be created in the Dockerfile with
+  `chown app:app` before `USER app`, and mounted as a volume, or use object storage.
+
 ## Before you start
 
 1. `PROJECT.md` — if it still has `TODO`, ask the user before inventing domain entities.
